@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme — Compose handles all theming; we just need no action bar -->
+    <style name="Theme.HealLog" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash screen theme (SplashScreen API, backwards-compat via core-splashscreen) -->
+    <style name="Theme.HealLog.Splash" parent="Theme.SplashScreen">
+        <!-- Teal 700 background to match primary brand color -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- Use the adaptive icon foreground as the splash icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <!-- Hand off to the main Compose theme after the splash is done -->
+        <item name="postSplashScreenTheme">@style/Theme.HealLog</item>
+    </style>
+</resources>

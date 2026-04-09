@@ -1,0 +1,836 @@
+package com.heallog.ui.detail
+
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.heallog.data.local.entity.Injury
+import com.heallog.data.local.entity.PainLog
+import com.heallog.model.BodyParts
+import com.heallog.model.InjuryStatus
+import com.heallog.ui.theme.HealLogTheme
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.roundToInt
+
+@Composable
+fun InjuryDetailScreen(
+    injuryId: Long,
+    onNavigateBack: () -> Unit,
+    viewModel: InjuryDetailViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.navigateBack.collect { onNavigateBack() }
+    }
+    LaunchedEffect(Unit) {
+        viewModel.logSaved.collect {
+            snackbarHostState.showSnackbar("통증 기록이 추가되었습니다")
+        }
+    }
+
+    InjuryDetailContent(
+        uiState = uiState,
+        snackbarHostState = snackbarHostState,
+        onNavigateBack = onNavigateBack,
+        onToggleLogForm = viewModel::toggleLogForm,
+        onUpdateLogPainLevel = viewModel::updateLogPainLevel,
+        onUpdateLogNote = viewModel::updateLogNote,
+        onAddLogPhoto = viewModel::addLogPhoto,
+        onRemoveLogPhoto = viewModel::removeLogPhoto,
+        onAddPainLog = viewModel::addPainLog,
+        onUpdateStatus = viewModel::updateInjuryStatus,
+        onDeleteInjury = viewModel::deleteInjury
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InjuryDetailContent(
+    uiState: InjuryDetailUiState,
+    snackbarHostState: SnackbarHostState,
+    onNavigateBack: () -> Unit,
+    onToggleLogForm: () -> Unit,
+    onUpdateLogPainLevel: (Int) -> Unit,
+    onUpdateLogNote: (String) -> Unit,
+    onAddLogPhoto: (Uri) -> Unit,
+    onRemoveLogPhoto: (Uri) -> Unit,
+    onAddPainLog: () -> Unit,
+    onUpdateStatus: (InjuryStatus) -> Unit,
+    onDeleteInjury: () -> Unit
+) {
+    var showOverflowMenu by rememberSaveable { mutableStateOf(false) }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("부상 기록 삭제") },
+            text = { Text("이 부상 기록과 모든 통증 일지가 삭제됩니다. 계속하시겠습니까?") },
+            confirmButton = {
+                TextButton(onClick = { onDeleteInjury(); showDeleteDialog = false }) {
+                    Text("삭제", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            TopAppBar(
+                title = { Text(uiState.injury?.title ?: "부상 상세") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로")
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "더보기")
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text("부상 삭제", color = MaterialTheme.colorScheme.error)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
+            }
+            uiState.error != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(uiState.error, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            uiState.injury != null -> {
+                DetailBody(
+                    injury = uiState.injury,
+                    painLogs = uiState.painLogs,
+                    formState = uiState.newLogForm,
+                    onToggleLogForm = onToggleLogForm,
+                    onUpdateLogPainLevel = onUpdateLogPainLevel,
+                    onUpdateLogNote = onUpdateLogNote,
+                    onAddLogPhoto = onAddLogPhoto,
+                    onRemoveLogPhoto = onRemoveLogPhoto,
+                    onAddPainLog = onAddPainLog,
+                    onUpdateStatus = onUpdateStatus,
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailBody(
+    injury: Injury,
+    painLogs: List<PainLog>,
+    formState: NewLogFormState,
+    onToggleLogForm: () -> Unit,
+    onUpdateLogPainLevel: (Int) -> Unit,
+    onUpdateLogNote: (String) -> Unit,
+    onAddLogPhoto: (Uri) -> Unit,
+    onRemoveLogPhoto: (Uri) -> Unit,
+    onAddPainLog: () -> Unit,
+    onUpdateStatus: (InjuryStatus) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        item {
+            InjurySummaryCard(
+                injury = injury,
+                onUpdateStatus = onUpdateStatus,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+
+        item {
+            AddLogSection(
+                formState = formState,
+                onToggle = onToggleLogForm,
+                onPainLevelChange = onUpdateLogPainLevel,
+                onNoteChange = onUpdateLogNote,
+                onAddPhoto = onAddLogPhoto,
+                onRemovePhoto = onRemoveLogPhoto,
+                onSubmit = onAddPainLog,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+        }
+
+        if (painLogs.isNotEmpty()) {
+            item {
+                Text(
+                    text = "통증 기록 (${painLogs.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp)
+                )
+            }
+
+            itemsIndexed(painLogs) { index, log ->
+                PainLogEntry(
+                    log = log,
+                    isLast = index == painLogs.lastIndex
+                )
+            }
+        }
+    }
+}
+
+// ── Summary Card ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun InjurySummaryCard(
+    injury: Injury,
+    onUpdateStatus: (InjuryStatus) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bodyPartName = BodyParts.findById(injury.bodyPart)?.nameKo ?: injury.bodyPart
+    val daysSince = java.time.temporal.ChronoUnit.DAYS.between(injury.occurredAt, LocalDate.now())
+    val dateFormatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일")
+
+    ElevatedCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Body part + title
+            Text(
+                text = bodyPartName,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = injury.title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            if (injury.description.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = injury.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+            // Date + elapsed
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = injury.occurredAt.format(dateFormatter),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.weight(1f))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        text = "D+$daysSince",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Status dropdown
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "상태",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(40.dp)
+                )
+                StatusDropdown(
+                    current = injury.status,
+                    onSelect = onUpdateStatus
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusDropdown(
+    current: InjuryStatus,
+    onSelect: (InjuryStatus) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val (containerColor, contentColor) = statusColors(current)
+
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(8.dp),
+            color = containerColor
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = statusLabel(current),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp
+                    else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = contentColor
+                )
+            }
+        }
+
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            InjuryStatus.entries.forEach { status ->
+                val (dotColor, _) = statusColors(status)
+                DropdownMenuItem(
+                    text = { Text(statusLabel(status)) },
+                    leadingIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(dotColor)
+                        )
+                    },
+                    onClick = { onSelect(status); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+// ── Add Log Section ───────────────────────────────────────────────────────────
+
+@Composable
+private fun AddLogSection(
+    formState: NewLogFormState,
+    onToggle: () -> Unit,
+    onPainLevelChange: (Int) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onAddPhoto: (Uri) -> Unit,
+    onRemovePhoto: (Uri) -> Unit,
+    onSubmit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let { onAddPhoto(it) } }
+
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column {
+            // Header row – always visible
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "오늘의 통증 기록",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = if (formState.isExpanded) Icons.Default.KeyboardArrowUp
+                    else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (formState.isExpanded) "접기" else "펼치기"
+                )
+            }
+
+            AnimatedVisibility(visible = formState.isExpanded) {
+                Column(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
+                    HorizontalDivider()
+                    Spacer(Modifier.height(16.dp))
+
+                    // Pain level slider
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(painEmoji(formState.painLevel), fontSize = 28.sp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "통증 강도: ${formState.painLevel}/10",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = formState.painLevel.toFloat(),
+                                onValueChange = { onPainLevelChange(it.roundToInt()) },
+                                valueRange = 0f..10f,
+                                steps = 9
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Note field
+                    OutlinedTextField(
+                        value = formState.note,
+                        onValueChange = onNoteChange,
+                        label = { Text("메모") },
+                        placeholder = { Text("오늘 상태를 기록하세요") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 4
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Photo row
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(formState.photoUris) { uri ->
+                            FormPhotoThumbnail(uri = uri, onRemove = { onRemovePhoto(uri) })
+                        }
+                        if (formState.photoUris.size < 3) {
+                            item {
+                                AddPhotoButton(
+                                    onClick = {
+                                        photoPicker.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Submit
+                    Button(
+                        onClick = onSubmit,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !formState.isSaving
+                    ) {
+                        if (formState.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text("기록 추가")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormPhotoThumbnail(uri: Uri, onRemove: () -> Unit) {
+    var hasError by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.size(72.dp)) {
+        if (hasError) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("!", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            AsyncImage(
+                model = uri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                onError = { hasError = true },
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+            )
+        }
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(20.dp)
+                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "삭제",
+                tint = Color.White,
+                modifier = Modifier.size(12.dp)
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun AddPhotoButton(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.size(72.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "사진 추가",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// ── Pain Log Timeline ─────────────────────────────────────────────────────────
+
+@Composable
+private fun PainLogEntry(log: PainLog, isLast: Boolean) {
+    val photos = log.photoUris?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+    val timeFormatter = DateTimeFormatter.ofPattern("M월 d일 (E) a h:mm", Locale.KOREAN)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp)
+    ) {
+        // Timeline indicator column
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(24.dp)
+        ) {
+            // Top connector line (except for first item — but since sorted newest-first,
+            // all items except the first need a top line to visually connect upward)
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(10.dp)
+                    .background(MaterialTheme.colorScheme.outlineVariant)
+            )
+            // Dot
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(painLevelColor(log.painLevel))
+            )
+            // Bottom connector (hidden for last item)
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .weight(1f)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        // Content
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = if (isLast) 0.dp else 16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = log.loggedAt.format(timeFormatter),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                PainBadge(painLevel = log.painLevel)
+            }
+
+            if (log.note.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = log.note,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            if (photos.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(photos) { uriString ->
+                        TimelinePhoto(uriString = uriString)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PainBadge(painLevel: Int) {
+    val textColor = if (painLevel in 4..6) Color(0xFF3E2723) else Color.White
+    Surface(
+        shape = CircleShape,
+        color = painLevelColor(painLevel)
+    ) {
+        Text(
+            text = painLevel.toString(),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun TimelinePhoto(uriString: String) {
+    var hasError by remember { mutableStateOf(false) }
+    if (hasError) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(MaterialTheme.colorScheme.errorContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("!", color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
+        }
+    } else {
+        AsyncImage(
+            model = Uri.parse(uriString),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            onError = { hasError = true },
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(6.dp))
+        )
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+private fun statusLabel(status: InjuryStatus): String = when (status) {
+    InjuryStatus.ACTIVE -> "진행 중"
+    InjuryStatus.RECOVERING -> "회복 중"
+    InjuryStatus.HEALED -> "완치"
+}
+
+@Composable
+private fun statusColors(status: InjuryStatus): Pair<Color, Color> = when (status) {
+    InjuryStatus.ACTIVE -> Pair(
+        MaterialTheme.colorScheme.errorContainer,
+        MaterialTheme.colorScheme.onErrorContainer
+    )
+    InjuryStatus.RECOVERING -> Pair(
+        MaterialTheme.colorScheme.tertiaryContainer,
+        MaterialTheme.colorScheme.onTertiaryContainer
+    )
+    InjuryStatus.HEALED -> Pair(
+        MaterialTheme.colorScheme.primaryContainer,
+        MaterialTheme.colorScheme.onPrimaryContainer
+    )
+}
+
+private fun painLevelColor(level: Int): Color = when {
+    level <= 3 -> Color(0xFF4CAF50)
+    level <= 6 -> Color(0xFFFFC107)
+    else -> Color(0xFFF44336)
+}
+
+private fun painEmoji(level: Int): String = when (level) {
+    0 -> "😊"
+    in 1..3 -> "😐"
+    in 4..6 -> "😣"
+    in 7..9 -> "😫"
+    else -> "🚨"
+}
+
+// ── Previews ──────────────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, name = "Loading")
+@Composable
+private fun DetailLoadingPreview() {
+    HealLogTheme {
+        InjuryDetailContent(
+            uiState = InjuryDetailUiState(isLoading = true),
+            snackbarHostState = remember { SnackbarHostState() },
+            onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
+            onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
+            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Detail with logs")
+@Composable
+private fun DetailSuccessPreview() {
+    val injury = Injury(
+        id = 1L, bodyPart = "left_knee", title = "왼쪽 무릎 인대",
+        description = "계단 내려오다 삐끗했음",
+        painLevel = 7,
+        occurredAt = LocalDate.now().minusDays(14),
+        createdAt = LocalDateTime.now().minusDays(14),
+        status = InjuryStatus.RECOVERING
+    )
+    val logs = listOf(
+        PainLog(id = 1L, injuryId = 1L, painLevel = 5, note = "많이 나아지는 중", loggedAt = LocalDateTime.now()),
+        PainLog(id = 2L, injuryId = 1L, painLevel = 7, note = "아직 많이 아픔", loggedAt = LocalDateTime.now().minusDays(3))
+    )
+    HealLogTheme {
+        InjuryDetailContent(
+            uiState = InjuryDetailUiState(
+                injury = injury, painLogs = logs,
+                newLogForm = NewLogFormState(isExpanded = true, painLevel = 4),
+                isLoading = false
+            ),
+            snackbarHostState = remember { SnackbarHostState() },
+            onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
+            onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
+            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Detail collapsed form")
+@Composable
+private fun DetailCollapsedPreview() {
+    val injury = Injury(
+        id = 1L, bodyPart = "right_shoulder", title = "오른쪽 어깨 충돌",
+        description = "", painLevel = 6,
+        occurredAt = LocalDate.now().minusDays(3),
+        createdAt = LocalDateTime.now().minusDays(3),
+        status = InjuryStatus.ACTIVE
+    )
+    HealLogTheme {
+        InjuryDetailContent(
+            uiState = InjuryDetailUiState(injury = injury, isLoading = false),
+            snackbarHostState = remember { SnackbarHostState() },
+            onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
+            onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
+            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {}
+        )
+    }
+}
