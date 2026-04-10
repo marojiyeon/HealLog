@@ -16,5 +16,6 @@ data class Injury(
     val painLevel: Int,
     val occurredAt: LocalDate,
     val createdAt: LocalDateTime,
-    val status: InjuryStatus = InjuryStatus.ACTIVE
+    val status: InjuryStatus = InjuryStatus.ACTIVE,
+    val updatedAt: LocalDateTime? = null
 )

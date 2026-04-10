@@ -126,7 +126,12 @@ private fun RecordInjuryContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("${uiState.bodyPartNameKo} 부상 기록") },
+                title = {
+                    Text(
+                        if (uiState.isEditMode) "부상 정보 수정"
+                        else "${uiState.bodyPartNameKo} 부상 기록"
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -149,7 +154,12 @@ private fun RecordInjuryContent(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = if (uiState.isSaving) "저장 중..." else "저장",
+                        text = when {
+                            uiState.isSaving && uiState.isEditMode -> "수정 중..."
+                            uiState.isSaving -> "저장 중..."
+                            uiState.isEditMode -> "수정 완료"
+                            else -> "저장"
+                        },
                         style = MaterialTheme.typography.labelLarge
                     )
                 }

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import com.heallog.data.local.entity.PainLog
 import kotlinx.coroutines.flow.Flow
 
@@ -18,6 +19,9 @@ interface PainLogDao {
 
     @Insert
     suspend fun insertLog(log: PainLog): Long
+
+    @Update
+    suspend fun updateLog(log: PainLog)
 
     @Delete
     suspend fun deleteLog(log: PainLog)

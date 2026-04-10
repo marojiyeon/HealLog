@@ -73,6 +73,10 @@ class InjuryDetailViewModel @Inject constructor(
     private val _logSaved = Channel<Unit>(Channel.BUFFERED)
     val logSaved = _logSaved.receiveAsFlow()
 
+    // Emits the bodyPartId to navigate to edit injury screen
+    private val _navigateToEdit = Channel<String>(Channel.BUFFERED)
+    val navigateToEdit = _navigateToEdit.receiveAsFlow()
+
     fun toggleLogForm() {
         _formState.update { it.copy(isExpanded = !it.isExpanded) }
     }
@@ -111,9 +115,29 @@ class InjuryDetailViewModel @Inject constructor(
                     loggedAt = LocalDateTime.now()
                 )
             )
-            // Reset and collapse the form after save
             _formState.value = NewLogFormState(isExpanded = false)
             _logSaved.send(Unit)
+        }
+    }
+
+    fun updatePainLog(log: PainLog, painLevel: Int, note: String, photoUris: List<Uri>) {
+        viewModelScope.launch {
+            repository.updateLog(
+                log.copy(
+                    painLevel = painLevel,
+                    note = note.trim(),
+                    photoUris = photoUris
+                        .joinToString(",") { it.toString() }
+                        .takeIf { it.isNotBlank() },
+                    updatedAt = LocalDateTime.now()
+                )
+            )
+        }
+    }
+
+    fun deletePainLog(log: PainLog) {
+        viewModelScope.launch {
+            repository.deleteLog(log)
         }
     }
 
@@ -129,6 +153,13 @@ class InjuryDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repository.deleteInjury(injury)
             _navigateBack.send(Unit)
+        }
+    }
+
+    fun navigateToEditInjury() {
+        val injury = uiState.value.injury ?: return
+        viewModelScope.launch {
+            _navigateToEdit.send(injury.bodyPart)
         }
     }
 }

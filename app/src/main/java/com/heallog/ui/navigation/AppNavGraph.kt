@@ -23,7 +23,7 @@ sealed interface Screen {
     data object BodyMap : Screen
 
     @Serializable
-    data class RecordInjury(val bodyPartId: String) : Screen
+    data class RecordInjury(val bodyPartId: String, val injuryId: Long = -1L) : Screen
 
     @Serializable
     data class InjuryDetail(val injuryId: Long) : Screen
@@ -71,7 +71,12 @@ fun AppNavGraph(navController: NavHostController) {
             val route = backStackEntry.toRoute<Screen.InjuryDetail>()
             InjuryDetailScreen(
                 injuryId = route.injuryId,
-                onNavigateBack = { navController.navigateUp() }
+                onNavigateBack = { navController.navigateUp() },
+                onNavigateToEdit = { bodyPartId ->
+                    navController.navigate(
+                        Screen.RecordInjury(bodyPartId = bodyPartId, injuryId = route.injuryId)
+                    )
+                }
             )
         }
     }

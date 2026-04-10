@@ -37,5 +37,7 @@ class InjuryRepository @Inject constructor(
 
     suspend fun insertLog(log: PainLog): Long = painLogDao.insertLog(log)
 
+    suspend fun updateLog(log: PainLog) = painLogDao.updateLog(log)
+
     suspend fun deleteLog(log: PainLog) = painLogDao.deleteLog(log)
 }

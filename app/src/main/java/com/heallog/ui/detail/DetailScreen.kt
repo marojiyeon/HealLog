@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
@@ -57,6 +59,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -65,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -88,6 +92,7 @@ import kotlin.math.roundToInt
 fun InjuryDetailScreen(
     injuryId: Long,
     onNavigateBack: () -> Unit,
+    onNavigateToEdit: (bodyPartId: String) -> Unit,
     viewModel: InjuryDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -101,6 +106,9 @@ fun InjuryDetailScreen(
             snackbarHostState.showSnackbar("통증 기록이 추가되었습니다")
         }
     }
+    LaunchedEffect(Unit) {
+        viewModel.navigateToEdit.collect { bodyPartId -> onNavigateToEdit(bodyPartId) }
+    }
 
     InjuryDetailContent(
         uiState = uiState,
@@ -113,7 +121,10 @@ fun InjuryDetailScreen(
         onRemoveLogPhoto = viewModel::removeLogPhoto,
         onAddPainLog = viewModel::addPainLog,
         onUpdateStatus = viewModel::updateInjuryStatus,
-        onDeleteInjury = viewModel::deleteInjury
+        onDeleteInjury = viewModel::deleteInjury,
+        onEditInjury = viewModel::navigateToEditInjury,
+        onUpdatePainLog = viewModel::updatePainLog,
+        onDeletePainLog = viewModel::deletePainLog
     )
 }
 
@@ -130,25 +141,88 @@ private fun InjuryDetailContent(
     onRemoveLogPhoto: (Uri) -> Unit,
     onAddPainLog: () -> Unit,
     onUpdateStatus: (InjuryStatus) -> Unit,
-    onDeleteInjury: () -> Unit
+    onDeleteInjury: () -> Unit,
+    onEditInjury: () -> Unit,
+    onUpdatePainLog: (PainLog, Int, String, List<Uri>) -> Unit,
+    onDeletePainLog: (PainLog) -> Unit
 ) {
     var showOverflowMenu by rememberSaveable { mutableStateOf(false) }
-    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteInjuryDialog by rememberSaveable { mutableStateOf(false) }
 
-    if (showDeleteDialog) {
+    // Pain log action state
+    var selectedLogForMenu by remember { mutableStateOf<PainLog?>(null) }
+    var editingLog by remember { mutableStateOf<PainLog?>(null) }
+    var deletingLog by remember { mutableStateOf<PainLog?>(null) }
+
+    // Delete injury confirmation dialog
+    if (showDeleteInjuryDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { showDeleteInjuryDialog = false },
             title = { Text("부상 기록 삭제") },
             text = { Text("이 부상 기록과 모든 통증 일지가 삭제됩니다. 계속하시겠습니까?") },
             confirmButton = {
-                TextButton(onClick = { onDeleteInjury(); showDeleteDialog = false }) {
+                TextButton(onClick = { onDeleteInjury(); showDeleteInjuryDialog = false }) {
                     Text("삭제", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("취소")
+                TextButton(onClick = { showDeleteInjuryDialog = false }) { Text("취소") }
+            }
+        )
+    }
+
+    // Pain log context menu (long-press)
+    if (selectedLogForMenu != null) {
+        val log = selectedLogForMenu!!
+        AlertDialog(
+            onDismissRequest = { selectedLogForMenu = null },
+            title = { Text("기록 관리") },
+            text = { Text("이 통증 기록을 어떻게 할까요?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    editingLog = log
+                    selectedLogForMenu = null
+                }) { Text("수정") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    deletingLog = log
+                    selectedLogForMenu = null
+                }) {
+                    Text("삭제", color = MaterialTheme.colorScheme.error)
                 }
+            }
+        )
+    }
+
+    // Pain log delete confirmation
+    if (deletingLog != null) {
+        AlertDialog(
+            onDismissRequest = { deletingLog = null },
+            title = { Text("통증 기록 삭제") },
+            text = { Text("이 통증 기록을 삭제하시겠습니까?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeletePainLog(deletingLog!!)
+                    deletingLog = null
+                }) {
+                    Text("삭제", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deletingLog = null }) { Text("취소") }
+            }
+        )
+    }
+
+    // Pain log edit dialog
+    if (editingLog != null) {
+        PainLogEditDialog(
+            log = editingLog!!,
+            onDismiss = { editingLog = null },
+            onConfirm = { painLevel, note, photoUris ->
+                onUpdatePainLog(editingLog!!, painLevel, note, photoUris)
+                editingLog = null
             }
         )
     }
@@ -164,6 +238,12 @@ private fun InjuryDetailContent(
                     }
                 },
                 actions = {
+                    // Edit injury button
+                    if (uiState.injury != null) {
+                        IconButton(onClick = onEditInjury) {
+                            Icon(Icons.Default.Edit, contentDescription = "부상 정보 수정")
+                        }
+                    }
                     Box {
                         IconButton(onClick = { showOverflowMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "더보기")
@@ -185,7 +265,7 @@ private fun InjuryDetailContent(
                                 },
                                 onClick = {
                                     showOverflowMenu = false
-                                    showDeleteDialog = true
+                                    showDeleteInjuryDialog = true
                                 }
                             )
                         }
@@ -221,6 +301,7 @@ private fun InjuryDetailContent(
                     onRemoveLogPhoto = onRemoveLogPhoto,
                     onAddPainLog = onAddPainLog,
                     onUpdateStatus = onUpdateStatus,
+                    onLongPressLog = { log -> selectedLogForMenu = log },
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -240,6 +321,7 @@ private fun DetailBody(
     onRemoveLogPhoto: (Uri) -> Unit,
     onAddPainLog: () -> Unit,
     onUpdateStatus: (InjuryStatus) -> Unit,
+    onLongPressLog: (PainLog) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -280,7 +362,8 @@ private fun DetailBody(
             itemsIndexed(painLogs) { index, log ->
                 PainLogEntry(
                     log = log,
-                    isLast = index == painLogs.lastIndex
+                    isLast = index == painLogs.lastIndex,
+                    onLongPress = { onLongPressLog(log) }
                 )
             }
         }
@@ -301,7 +384,6 @@ private fun InjurySummaryCard(
 
     ElevatedCard(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Body part + title
             Text(
                 text = bodyPartName,
                 style = MaterialTheme.typography.labelMedium,
@@ -323,9 +405,17 @@ private fun InjurySummaryCard(
                 )
             }
 
+            if (injury.updatedAt != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "수정됨 · ${injury.updatedAt.format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-            // Date + elapsed
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = injury.occurredAt.format(dateFormatter),
@@ -349,7 +439,6 @@ private fun InjurySummaryCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Status dropdown
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "상태",
@@ -440,7 +529,6 @@ private fun AddLogSection(
 
     Card(modifier = modifier.fillMaxWidth()) {
         Column {
-            // Header row – always visible
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -466,7 +554,6 @@ private fun AddLogSection(
                     HorizontalDivider()
                     Spacer(Modifier.height(16.dp))
 
-                    // Pain level slider
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(painEmoji(formState.painLevel), fontSize = 28.sp)
                         Spacer(Modifier.width(12.dp))
@@ -487,7 +574,6 @@ private fun AddLogSection(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Note field
                     OutlinedTextField(
                         value = formState.note,
                         onValueChange = onNoteChange,
@@ -500,10 +586,7 @@ private fun AddLogSection(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // Photo row
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(formState.photoUris) { uri ->
                             FormPhotoThumbnail(uri = uri, onRemove = { onRemovePhoto(uri) })
                         }
@@ -522,7 +605,6 @@ private fun AddLogSection(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Submit
                     Button(
                         onClick = onSubmit,
                         modifier = Modifier.fillMaxWidth(),
@@ -584,7 +666,6 @@ private fun FormPhotoThumbnail(uri: Uri, onRemove: () -> Unit) {
     }
 }
 
-
 @Composable
 private fun AddPhotoButton(onClick: () -> Unit) {
     Surface(
@@ -605,14 +686,23 @@ private fun AddPhotoButton(onClick: () -> Unit) {
 
 // ── Pain Log Timeline ─────────────────────────────────────────────────────────
 
+private val logDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd", Locale.KOREAN)
+private val timeFormatter = DateTimeFormatter.ofPattern("M월 d일 (E) a h:mm", Locale.KOREAN)
+
 @Composable
-private fun PainLogEntry(log: PainLog, isLast: Boolean) {
+private fun PainLogEntry(
+    log: PainLog,
+    isLast: Boolean,
+    onLongPress: () -> Unit
+) {
     val photos = log.photoUris?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
-    val timeFormatter = DateTimeFormatter.ofPattern("M월 d일 (E) a h:mm", Locale.KOREAN)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .pointerInput(log.id) {
+                detectTapGestures(onLongPress = { onLongPress() })
+            }
             .padding(start = 16.dp, end = 16.dp)
     ) {
         // Timeline indicator column
@@ -620,22 +710,18 @@ private fun PainLogEntry(log: PainLog, isLast: Boolean) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.width(24.dp)
         ) {
-            // Top connector line (except for first item — but since sorted newest-first,
-            // all items except the first need a top line to visually connect upward)
             Box(
                 modifier = Modifier
                     .width(2.dp)
                     .height(10.dp)
                     .background(MaterialTheme.colorScheme.outlineVariant)
             )
-            // Dot
             Box(
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
                     .background(painLevelColor(log.painLevel))
             )
-            // Bottom connector (hidden for last item)
             if (!isLast) {
                 Box(
                     modifier = Modifier
@@ -665,6 +751,16 @@ private fun PainLogEntry(log: PainLog, isLast: Boolean) {
                     modifier = Modifier.weight(1f)
                 )
                 PainBadge(painLevel = log.painLevel)
+            }
+
+            // Updated indicator
+            if (log.updatedAt != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "기록: ${log.loggedAt.format(logDateFormatter)} · 수정: ${log.updatedAt.format(logDateFormatter)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
             }
 
             if (log.note.isNotBlank()) {
@@ -730,6 +826,92 @@ private fun TimelinePhoto(uriString: String) {
     }
 }
 
+// ── Pain Log Edit Dialog ──────────────────────────────────────────────────────
+
+@Composable
+private fun PainLogEditDialog(
+    log: PainLog,
+    onDismiss: () -> Unit,
+    onConfirm: (painLevel: Int, note: String, photoUris: List<Uri>) -> Unit
+) {
+    val initialPhotos = remember(log.id) {
+        log.photoUris?.split(",")?.filter { it.isNotBlank() }?.map { Uri.parse(it) } ?: emptyList()
+    }
+
+    var painLevel by remember { mutableIntStateOf(log.painLevel) }
+    var note by remember { mutableStateOf(log.note) }
+    var photoUris by remember { mutableStateOf(initialPhotos) }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let { if (photoUris.size < 3) photoUris = photoUris + it } }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("통증 기록 수정") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Pain level
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(painEmoji(painLevel), fontSize = 24.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "통증 강도: $painLevel/10",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Slider(
+                            value = painLevel.toFloat(),
+                            onValueChange = { painLevel = it.roundToInt() },
+                            valueRange = 0f..10f,
+                            steps = 9
+                        )
+                    }
+                }
+
+                // Note
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("메모") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    maxLines = 4
+                )
+
+                // Photos
+                if (photoUris.isNotEmpty() || photoUris.size < 3) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(photoUris) { uri ->
+                            FormPhotoThumbnail(uri = uri, onRemove = { photoUris = photoUris - uri })
+                        }
+                        if (photoUris.size < 3) {
+                            item {
+                                AddPhotoButton(
+                                    onClick = {
+                                        photoPicker.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(painLevel, note, photoUris) }) {
+                Text("수정 완료")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("취소") }
+        }
+    )
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 private fun statusLabel(status: InjuryStatus): String = when (status) {
@@ -779,7 +961,8 @@ private fun DetailLoadingPreview() {
             snackbarHostState = remember { SnackbarHostState() },
             onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
             onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
-            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {}
+            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {},
+            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {}
         )
     }
 }
@@ -796,7 +979,11 @@ private fun DetailSuccessPreview() {
         status = InjuryStatus.RECOVERING
     )
     val logs = listOf(
-        PainLog(id = 1L, injuryId = 1L, painLevel = 5, note = "많이 나아지는 중", loggedAt = LocalDateTime.now()),
+        PainLog(
+            id = 1L, injuryId = 1L, painLevel = 5, note = "많이 나아지는 중",
+            loggedAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now().plusHours(1)
+        ),
         PainLog(id = 2L, injuryId = 1L, painLevel = 7, note = "아직 많이 아픔", loggedAt = LocalDateTime.now().minusDays(3))
     )
     HealLogTheme {
@@ -809,7 +996,8 @@ private fun DetailSuccessPreview() {
             snackbarHostState = remember { SnackbarHostState() },
             onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
             onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
-            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {}
+            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {},
+            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {}
         )
     }
 }
@@ -830,7 +1018,8 @@ private fun DetailCollapsedPreview() {
             snackbarHostState = remember { SnackbarHostState() },
             onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
             onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
-            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {}
+            onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {},
+            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {}
         )
     }
 }

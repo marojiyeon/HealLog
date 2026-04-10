@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.heallog.data.local.dao.InjuryDao
 import com.heallog.data.local.dao.PainLogDao
 import com.heallog.data.local.database.HealLogDatabase
+import com.heallog.data.local.database.MIGRATION_1_2
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +24,9 @@ object DatabaseModule {
             context,
             HealLogDatabase::class.java,
             "heallog.db"
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2)
+            .build()
 
     @Provides
     fun provideInjuryDao(db: HealLogDatabase): InjuryDao = db.injuryDao()

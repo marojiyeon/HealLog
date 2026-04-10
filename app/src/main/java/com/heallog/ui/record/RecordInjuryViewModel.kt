@@ -13,6 +13,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -21,6 +22,7 @@ import java.time.LocalDateTime
 import javax.inject.Inject
 
 internal const val MAX_PHOTOS = 3
+private const val NO_INJURY_ID = -1L
 
 data class RecordInjuryUiState(
     val bodyPartId: String = "",
@@ -33,7 +35,8 @@ data class RecordInjuryUiState(
     val painLevelError: Boolean = false,
     val occurredDate: LocalDate = LocalDate.now(),
     val photoUris: List<Uri> = emptyList(),
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    val isEditMode: Boolean = false
 )
 
 @HiltViewModel
@@ -43,6 +46,7 @@ class RecordInjuryViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val bodyPartId: String = checkNotNull(savedStateHandle["bodyPartId"])
+    private val injuryId: Long = savedStateHandle.get<Long>("injuryId") ?: NO_INJURY_ID
 
     private val _uiState = MutableStateFlow(
         RecordInjuryUiState(
@@ -52,9 +56,37 @@ class RecordInjuryViewModel @Inject constructor(
     )
     val uiState: StateFlow<RecordInjuryUiState> = _uiState.asStateFlow()
 
-    // One-shot navigation event: screen collects this and calls onNavigateBack()
+    // One-shot navigation event
     private val _navigateBack = Channel<Unit>(Channel.BUFFERED)
     val navigateBack = _navigateBack.receiveAsFlow()
+
+    // The existing injury loaded in edit mode, used when saving updates
+    private var existingInjury: Injury? = null
+
+    init {
+        if (injuryId != NO_INJURY_ID) {
+            loadExistingInjury()
+        }
+    }
+
+    private fun loadExistingInjury() {
+        viewModelScope.launch {
+            val injury = repository.getInjuryById(injuryId).first()
+            existingInjury = injury
+            if (injury != null) {
+                _uiState.update {
+                    it.copy(
+                        title = injury.title,
+                        description = injury.description,
+                        painLevel = injury.painLevel,
+                        isPainLevelTouched = true,
+                        occurredDate = injury.occurredAt,
+                        isEditMode = true
+                    )
+                }
+            }
+        }
+    }
 
     fun updateTitle(value: String) {
         _uiState.update { it.copy(title = value, titleError = false) }
@@ -99,17 +131,32 @@ class RecordInjuryViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
-            repository.insertInjury(
-                Injury(
-                    bodyPart = state.bodyPartId,
-                    title = state.title.trim(),
-                    description = state.description.trim(),
-                    painLevel = state.painLevel,
-                    occurredAt = state.occurredDate,
-                    createdAt = LocalDateTime.now(),
-                    status = InjuryStatus.ACTIVE
+
+            if (state.isEditMode) {
+                val existing = existingInjury ?: return@launch
+                repository.updateInjury(
+                    existing.copy(
+                        title = state.title.trim(),
+                        description = state.description.trim(),
+                        painLevel = state.painLevel,
+                        occurredAt = state.occurredDate,
+                        updatedAt = LocalDateTime.now()
+                    )
                 )
-            )
+            } else {
+                repository.insertInjury(
+                    Injury(
+                        bodyPart = state.bodyPartId,
+                        title = state.title.trim(),
+                        description = state.description.trim(),
+                        painLevel = state.painLevel,
+                        occurredAt = state.occurredDate,
+                        createdAt = LocalDateTime.now(),
+                        status = InjuryStatus.ACTIVE
+                    )
+                )
+            }
+
             _navigateBack.send(Unit)
         }
     }

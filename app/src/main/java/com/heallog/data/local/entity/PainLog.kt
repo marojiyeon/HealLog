@@ -25,5 +25,6 @@ data class PainLog(
     val painLevel: Int,
     val note: String,
     val photoUris: String? = null,
-    val loggedAt: LocalDateTime
+    val loggedAt: LocalDateTime,
+    val updatedAt: LocalDateTime? = null
 )
