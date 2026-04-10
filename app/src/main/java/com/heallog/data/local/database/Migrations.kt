@@ -49,3 +49,23 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         """.trimIndent())
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS notification_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                type TEXT NOT NULL,
+                isEnabled INTEGER NOT NULL DEFAULT 1,
+                times TEXT NOT NULL DEFAULT '[]',
+                repeatDays TEXT NOT NULL DEFAULT '[]',
+                intervalHours INTEGER,
+                injuryId INTEGER,
+                doNotDisturbStart TEXT,
+                doNotDisturbEnd TEXT
+            )
+            """.trimIndent()
+        )
+    }
+}
