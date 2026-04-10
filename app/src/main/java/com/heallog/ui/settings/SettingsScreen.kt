@@ -2,18 +2,27 @@ package com.heallog.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.heallog.ui.theme.HealLogTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateToThemeSettings: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val voiceFabEnabled by viewModel.voiceFabEnabled.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -59,6 +68,48 @@ fun SettingsScreen(
                 subtitle = "버전 1.0.0",
                 onClick = {}
             )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+            Text(
+                text = "음성 인식",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            )
+
+            HorizontalDivider()
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "홈 화면 음성 명령 버튼",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "홈 화면에 음성 명령 FAB을 표시합니다",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Switch(
+                    checked = voiceFabEnabled,
+                    onCheckedChange = viewModel::setVoiceFabEnabled
+                )
+            }
+
+            HorizontalDivider()
         }
     }
 }
@@ -92,5 +143,15 @@ private fun SettingsItem(
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SettingsItemPreview() {
+    HealLogTheme {
+        Column {
+            SettingsItem(title = "테마 설정", subtitle = "다크 모드, 색상, 글꼴 크기", onClick = {})
+        }
     }
 }

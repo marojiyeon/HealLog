@@ -102,8 +102,8 @@ dependencies {
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
 
-    // DataStore
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    // Material Icons Extended (for Mic icon)
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // Glance (App Widgets)
     implementation("androidx.glance:glance-appwidget:1.1.1")

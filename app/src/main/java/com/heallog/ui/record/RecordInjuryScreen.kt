@@ -35,7 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import com.heallog.ui.components.VoiceInputField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -177,31 +177,29 @@ private fun RecordInjuryContent(
 
             item {
                 FormSection(title = "부상 제목") {
-                    OutlinedTextField(
+                    VoiceInputField(
                         value = uiState.title,
                         onValueChange = onTitleChange,
-                        placeholder = { Text("부상 제목을 입력하세요") },
+                        placeholder = "부상 제목을 입력하세요",
                         isError = uiState.titleError,
                         supportingText = if (uiState.titleError) {
                             { Text("제목을 입력해주세요") }
                         } else null,
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
 
             item {
                 FormSection(title = "부상 설명") {
-                    OutlinedTextField(
+                    VoiceInputField(
                         value = uiState.description,
                         onValueChange = onDescriptionChange,
-                        placeholder = { Text("어떻게 다쳤는지 자세히 적어주세요") },
+                        placeholder = "어떻게 다쳤는지 자세히 적어주세요",
                         minLines = 3,
                         maxLines = 6,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

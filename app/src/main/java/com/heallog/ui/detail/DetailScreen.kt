@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import com.heallog.ui.components.VoiceInputField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
@@ -656,11 +657,11 @@ private fun AddLogSection(
 
                     Spacer(Modifier.height(8.dp))
 
-                    OutlinedTextField(
+                    VoiceInputField(
                         value = formState.note,
                         onValueChange = onNoteChange,
-                        label = { Text("메모") },
-                        placeholder = { Text("오늘 상태를 기록하세요") },
+                        label = "메모",
+                        placeholder = "오늘 상태를 기록하세요",
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2,
                         maxLines = 4

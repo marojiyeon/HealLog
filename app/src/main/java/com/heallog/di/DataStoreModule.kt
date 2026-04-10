@@ -1,8 +1,11 @@
 package com.heallog.di
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.heallog.data.datastore.ThemePreferences
 import com.heallog.data.datastore.UserProfileStore
+import com.heallog.data.preferences.voiceDataStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,4 +27,10 @@ object DataStoreModule {
     fun provideUserProfileStore(@ApplicationContext context: Context): UserProfileStore {
         return UserProfileStore(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideVoiceDataStore(
+        @ApplicationContext context: Context
+    ): DataStore<Preferences> = context.voiceDataStore
 }
