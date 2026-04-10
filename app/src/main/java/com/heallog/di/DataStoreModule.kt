@@ -2,6 +2,7 @@ package com.heallog.di
 
 import android.content.Context
 import com.heallog.data.datastore.ThemePreferences
+import com.heallog.data.datastore.UserProfileStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,5 +17,11 @@ object DataStoreModule {
     @Provides
     fun provideThemePreferences(@ApplicationContext context: Context): ThemePreferences {
         return ThemePreferences(context)
+    }
+
+    @Singleton
+    @Provides
+    fun provideUserProfileStore(@ApplicationContext context: Context): UserProfileStore {
+        return UserProfileStore(context)
     }
 }
