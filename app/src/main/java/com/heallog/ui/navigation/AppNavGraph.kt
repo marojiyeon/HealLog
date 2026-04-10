@@ -10,6 +10,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.heallog.ui.bodymap.BodyMapScreen
 import com.heallog.ui.detail.InjuryDetailScreen
+import com.heallog.ui.detail.hospital.AddMedicationScreen
+import com.heallog.ui.detail.hospital.AddVisitScreen
 import com.heallog.ui.home.HomeScreen
 import com.heallog.ui.record.RecordInjuryScreen
 import androidx.navigation.toRoute
@@ -27,6 +29,12 @@ sealed interface Screen {
 
     @Serializable
     data class InjuryDetail(val injuryId: Long) : Screen
+
+    @Serializable
+    data class AddVisit(val injuryId: Long, val visitId: Long = -1L) : Screen
+
+    @Serializable
+    data class AddMedication(val injuryId: Long, val medicationId: Long = -1L) : Screen
 }
 
 private val enterTransition = slideInHorizontally(initialOffsetX = { it }) + fadeIn()
@@ -76,7 +84,37 @@ fun AppNavGraph(navController: NavHostController) {
                     navController.navigate(
                         Screen.RecordInjury(bodyPartId = bodyPartId, injuryId = route.injuryId)
                     )
+                },
+                onNavigateToAddVisit = { injuryId ->
+                    navController.navigate(Screen.AddVisit(injuryId))
+                },
+                onNavigateToEditVisit = { injuryId, visitId ->
+                    navController.navigate(Screen.AddVisit(injuryId, visitId))
+                },
+                onNavigateToAddMedication = { injuryId ->
+                    navController.navigate(Screen.AddMedication(injuryId))
+                },
+                onNavigateToEditMedication = { injuryId, medicationId ->
+                    navController.navigate(Screen.AddMedication(injuryId, medicationId))
                 }
+            )
+        }
+
+        composable<Screen.AddVisit> { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.AddVisit>()
+            AddVisitScreen(
+                injuryId = route.injuryId,
+                visitId = route.visitId,
+                onNavigateBack = { navController.navigateUp() }
+            )
+        }
+
+        composable<Screen.AddMedication> { backStackEntry ->
+            val route = backStackEntry.toRoute<Screen.AddMedication>()
+            AddMedicationScreen(
+                injuryId = route.injuryId,
+                medicationId = route.medicationId,
+                onNavigateBack = { navController.navigateUp() }
             )
         }
     }

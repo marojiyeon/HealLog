@@ -81,6 +81,7 @@ import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.model.BodyParts
 import com.heallog.model.InjuryStatus
+import com.heallog.ui.detail.hospital.HospitalTab
 import com.heallog.ui.theme.HealLogTheme
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -93,6 +94,10 @@ fun InjuryDetailScreen(
     injuryId: Long,
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (bodyPartId: String) -> Unit,
+    onNavigateToAddVisit: (Long) -> Unit = {},
+    onNavigateToEditVisit: (Long, Long) -> Unit = { _, _ -> },
+    onNavigateToAddMedication: (Long) -> Unit = {},
+    onNavigateToEditMedication: (Long, Long) -> Unit = { _, _ -> },
     viewModel: InjuryDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -124,7 +129,11 @@ fun InjuryDetailScreen(
         onDeleteInjury = viewModel::deleteInjury,
         onEditInjury = viewModel::navigateToEditInjury,
         onUpdatePainLog = viewModel::updatePainLog,
-        onDeletePainLog = viewModel::deletePainLog
+        onDeletePainLog = viewModel::deletePainLog,
+        onNavigateToAddVisit = onNavigateToAddVisit,
+        onNavigateToEditVisit = onNavigateToEditVisit,
+        onNavigateToAddMedication = onNavigateToAddMedication,
+        onNavigateToEditMedication = onNavigateToEditMedication
     )
 }
 
@@ -144,7 +153,11 @@ private fun InjuryDetailContent(
     onDeleteInjury: () -> Unit,
     onEditInjury: () -> Unit,
     onUpdatePainLog: (PainLog, Int, String, List<Uri>) -> Unit,
-    onDeletePainLog: (PainLog) -> Unit
+    onDeletePainLog: (PainLog) -> Unit,
+    onNavigateToAddVisit: (Long) -> Unit = {},
+    onNavigateToEditVisit: (Long, Long) -> Unit = { _, _ -> },
+    onNavigateToAddMedication: (Long) -> Unit = {},
+    onNavigateToEditMedication: (Long, Long) -> Unit = { _, _ -> }
 ) {
     var showOverflowMenu by rememberSaveable { mutableStateOf(false) }
     var showDeleteInjuryDialog by rememberSaveable { mutableStateOf(false) }
@@ -302,6 +315,10 @@ private fun InjuryDetailContent(
                     onAddPainLog = onAddPainLog,
                     onUpdateStatus = onUpdateStatus,
                     onLongPressLog = { log -> selectedLogForMenu = log },
+                    onNavigateToAddVisit = onNavigateToAddVisit,
+                    onNavigateToEditVisit = onNavigateToEditVisit,
+                    onNavigateToAddMedication = onNavigateToAddMedication,
+                    onNavigateToEditMedication = onNavigateToEditMedication,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -309,8 +326,73 @@ private fun InjuryDetailContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DetailBody(
+    injury: Injury,
+    painLogs: List<PainLog>,
+    formState: NewLogFormState,
+    onToggleLogForm: () -> Unit,
+    onUpdateLogPainLevel: (Int) -> Unit,
+    onUpdateLogNote: (String) -> Unit,
+    onAddLogPhoto: (Uri) -> Unit,
+    onRemoveLogPhoto: (Uri) -> Unit,
+    onAddPainLog: () -> Unit,
+    onUpdateStatus: (InjuryStatus) -> Unit,
+    onLongPressLog: (PainLog) -> Unit,
+    onNavigateToAddVisit: (Long) -> Unit = {},
+    onNavigateToEditVisit: (Long, Long) -> Unit = { _, _ -> },
+    onNavigateToAddMedication: (Long) -> Unit = {},
+    onNavigateToEditMedication: (Long, Long) -> Unit = { _, _ -> },
+    modifier: Modifier = Modifier
+) {
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val tabs = listOf("통증 일지", "병원 치료")
+
+    Column(modifier = modifier.fillMaxSize()) {
+        androidx.compose.material3.TabRow(selectedTabIndex = selectedTab) {
+            tabs.forEachIndexed { index, title ->
+                androidx.compose.material3.Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = { Text(title) }
+                )
+            }
+        }
+
+        when (selectedTab) {
+            0 -> {
+                PainLogTab(
+                    injury = injury,
+                    painLogs = painLogs,
+                    formState = formState,
+                    onToggleLogForm = onToggleLogForm,
+                    onUpdateLogPainLevel = onUpdateLogPainLevel,
+                    onUpdateLogNote = onUpdateLogNote,
+                    onAddLogPhoto = onAddLogPhoto,
+                    onRemoveLogPhoto = onRemoveLogPhoto,
+                    onAddPainLog = onAddPainLog,
+                    onUpdateStatus = onUpdateStatus,
+                    onLongPressLog = onLongPressLog,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            1 -> {
+                HospitalTab(
+                    injuryId = injury.id,
+                    onAddVisit = onNavigateToAddVisit,
+                    onEditVisit = onNavigateToEditVisit,
+                    onAddMedication = onNavigateToAddMedication,
+                    onEditMedication = onNavigateToEditMedication,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PainLogTab(
     injury: Injury,
     painLogs: List<PainLog>,
     formState: NewLogFormState,
@@ -325,7 +407,7 @@ private fun DetailBody(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier,
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         item {
