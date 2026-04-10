@@ -30,7 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.heallog.R
 import androidx.core.content.ContextCompat
 import com.heallog.model.VoiceCommand
 import com.heallog.util.SpeechState
@@ -68,7 +70,7 @@ fun VoiceCommandFab(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasPermission = granted
-        if (granted) manager.startListening()
+        if (granted && manager.isAvailable) manager.startListening()
     }
 
     // Handle voice command results
@@ -84,17 +86,17 @@ fun VoiceCommandFab(
     if (showAudioRationale) {
         AlertDialog(
             onDismissRequest = { showAudioRationale = false },
-            title = { Text("마이크 권한이 필요합니다") },
-            text = { Text("음성으로 부상 부위와 통증 수준을 기록할 수 있습니다.") },
+            title = { Text(stringResource(R.string.mic_permission_title)) },
+            text = { Text(stringResource(R.string.mic_permission_rationale)) },
             confirmButton = {
                 TextButton(onClick = {
                     showAudioRationale = false
                     permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                }) { Text("허용") }
+                }) { Text(stringResource(R.string.action_allow)) }
             },
             dismissButton = {
                 TextButton(onClick = { showAudioRationale = false }) {
-                    Text("취소")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -140,7 +142,7 @@ fun VoiceCommandFab(
         } else {
             Icon(
                 imageVector = Icons.Default.Mic,
-                contentDescription = if (isListening) "음성 명령 인식 중" else "음성 명령",
+                contentDescription = stringResource(if (isListening) R.string.cd_voice_listening else R.string.cd_voice_command),
                 tint = if (isListening) MaterialTheme.colorScheme.onError
                 else MaterialTheme.colorScheme.onSecondaryContainer
             )

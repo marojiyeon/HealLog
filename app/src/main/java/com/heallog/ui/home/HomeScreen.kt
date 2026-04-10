@@ -50,9 +50,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.heallog.R
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -110,14 +112,14 @@ private fun HomeContent(
                     IconButton(onClick = onNavigateToNotificationSettings) {
                         Icon(
                             imageVector = Icons.Default.Notifications,
-                            contentDescription = "알림 설정",
+                            contentDescription = stringResource(R.string.cd_notification_settings),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "설정",
+                            contentDescription = stringResource(R.string.cd_settings),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -131,7 +133,7 @@ private fun HomeContent(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = "부상 수",
+                            contentDescription = stringResource(R.string.cd_injury_count),
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -155,7 +157,7 @@ private fun HomeContent(
                     )
                 }
                 SmallFloatingActionButton(onClick = onNavigateToBodyMap) {
-                    Icon(Icons.Default.Add, contentDescription = "부상 기록")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_injury))
                 }
             }
         }
@@ -216,19 +218,19 @@ private fun EmptyContent(
         }
         Spacer(Modifier.height(HealLogSpacing.LargeSpacing))
         Text(
-            text = "부상 기록이 없어요",
+            text = stringResource(R.string.empty_no_injuries),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "바디맵에서 부상을 기록해보세요",
+            text = stringResource(R.string.empty_go_to_bodymap),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(24.dp))
         TextButton(onClick = onNavigateToBodyMap) {
-            Text("바디맵으로 이동")
+            Text(stringResource(R.string.action_go_to_bodymap))
         }
     }
 }
@@ -261,7 +263,7 @@ private fun InjuryListContent(
         if (activeItems.isEmpty() && healedItems.isNotEmpty()) {
             item {
                 Text(
-                    text = "진행 중인 부상이 없어요",
+                    text = stringResource(R.string.no_active_injuries),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 8.dp)
@@ -286,13 +288,13 @@ private fun InjuryListContent(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "완치된 기록 (${healedItems.size})",
+                        text = stringResource(R.string.healed_records, healedItems.size),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
                     TextButton(onClick = { healedExpanded = !healedExpanded }) {
-                        Text(if (healedExpanded) "접기" else "보기")
+                        Text(stringResource(if (healedExpanded) R.string.action_collapse else R.string.action_expand))
                     }
                 }
             }

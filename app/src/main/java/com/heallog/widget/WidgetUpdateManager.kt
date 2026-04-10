@@ -1,6 +1,7 @@
 package com.heallog.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -22,15 +23,16 @@ class WidgetUpdateManager @Inject constructor(
      * Called whenever injury or pain log data is modified.
      */
     suspend fun updateAllWidgets() {
-        try {
-            // Update all widget instances asynchronously
-            HealLogSmallWidget().updateAll(context)
-            HealLogMediumWidget().updateAll(context)
-            HealLogLargeWidget().updateAll(context)
-        } catch (e: Exception) {
-            // Log but don't crash if widget update fails
-            // (widgets may not be installed or may be temporarily unavailable)
-            e.printStackTrace()
+        listOf(
+            "Small" to suspend { HealLogSmallWidget().updateAll(context) },
+            "Medium" to suspend { HealLogMediumWidget().updateAll(context) },
+            "Large" to suspend { HealLogLargeWidget().updateAll(context) }
+        ).forEach { (name, updateFn) ->
+            try {
+                updateFn()
+            } catch (e: Exception) {
+                Log.e("WidgetUpdateManager", "$name widget update failed", e)
+            }
         }
     }
 }

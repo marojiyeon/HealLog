@@ -1,3 +1,36 @@
 <resources>
     <string name="app_name">HealLog</string>
+
+    <!-- Navigation labels -->
+    <string name="nav_home">홈</string>
+    <string name="nav_bodymap">바디맵</string>
+    <string name="nav_profile">내 정보</string>
+    <string name="nav_settings">설정</string>
+
+    <!-- HomeScreen — content descriptions -->
+    <string name="cd_notification_settings">알림 설정</string>
+    <string name="cd_settings">설정</string>
+    <string name="cd_injury_count">부상 수</string>
+    <string name="cd_add_injury">부상 기록</string>
+
+    <!-- HomeScreen — empty state -->
+    <string name="empty_no_injuries">부상 기록이 없어요</string>
+    <string name="empty_go_to_bodymap">바디맵에서 부상을 기록해보세요</string>
+    <string name="action_go_to_bodymap">바디맵으로 이동</string>
+    <string name="no_active_injuries">진행 중인 부상이 없어요</string>
+
+    <!-- HomeScreen — healed section -->
+    <string name="healed_records">완치된 기록 (%1$d)</string>
+    <string name="action_collapse">접기</string>
+    <string name="action_expand">보기</string>
+
+    <!-- VoiceCommandFab — permission dialog -->
+    <string name="mic_permission_title">마이크 권한이 필요합니다</string>
+    <string name="mic_permission_rationale">음성으로 부상 부위와 통증 수준을 기록할 수 있습니다.</string>
+    <string name="action_allow">허용</string>
+    <string name="action_cancel">취소</string>
+
+    <!-- VoiceCommandFab — content descriptions -->
+    <string name="cd_voice_listening">음성 명령 인식 중</string>
+    <string name="cd_voice_command">음성 명령</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.heallog.ui.record
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -37,7 +38,8 @@ data class RecordInjuryUiState(
     val photoUris: List<Uri> = emptyList(),
     val isSaving: Boolean = false,
     val isEditMode: Boolean = false,
-    val photoError: String? = null
+    val photoError: String? = null,
+    val saveError: String? = null
 )
 
 @HiltViewModel
@@ -75,20 +77,25 @@ class RecordInjuryViewModel @Inject constructor(
 
     private fun loadExistingInjury() {
         viewModelScope.launch {
-            val injury = repository.getInjuryById(injuryId).first()
-            existingInjury = injury
-            if (injury != null) {
-                _uiState.update {
-                    it.copy(
-                        title = injury.title,
-                        description = injury.description,
-                        painLevel = injury.painLevel,
-                        isPainLevelTouched = true,
-                        occurredDate = injury.occurredAt,
-                        isEditMode = true
-                    )
+            try {
+                val injury = repository.getInjuryById(injuryId).first()
+                existingInjury = injury
+                if (injury != null) {
+                    _uiState.update {
+                        it.copy(
+                            title = injury.title,
+                            description = injury.description,
+                            painLevel = injury.painLevel,
+                            isPainLevelTouched = true,
+                            occurredDate = injury.occurredAt,
+                            isEditMode = true
+                        )
+                    }
+                    _originalState = _uiState.value
                 }
-                _originalState = _uiState.value
+            } catch (e: Exception) {
+                Log.e("RecordInjuryViewModel", "Failed to load injury $injuryId", e)
+                _navigateBack.send(Unit)
             }
         }
     }
@@ -158,33 +165,43 @@ class RecordInjuryViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
-
-            if (state.isEditMode) {
-                val existing = existingInjury ?: return@launch
-                repository.updateInjury(
-                    existing.copy(
-                        title = state.title.trim(),
-                        description = state.description.trim(),
-                        painLevel = state.painLevel,
-                        occurredAt = state.occurredDate,
-                        updatedAt = LocalDateTime.now()
+            try {
+                if (state.isEditMode) {
+                    val existing = existingInjury ?: run {
+                        _uiState.update { it.copy(isSaving = false) }
+                        return@launch
+                    }
+                    repository.updateInjury(
+                        existing.copy(
+                            title = state.title.trim(),
+                            description = state.description.trim(),
+                            painLevel = state.painLevel,
+                            occurredAt = state.occurredDate,
+                            updatedAt = LocalDateTime.now()
+                        )
                     )
-                )
-            } else {
-                repository.insertInjury(
-                    Injury(
-                        bodyPart = state.bodyPartId,
-                        title = state.title.trim(),
-                        description = state.description.trim(),
-                        painLevel = state.painLevel,
-                        occurredAt = state.occurredDate,
-                        createdAt = LocalDateTime.now(),
-                        status = InjuryStatus.ACTIVE
+                } else {
+                    repository.insertInjury(
+                        Injury(
+                            bodyPart = state.bodyPartId,
+                            title = state.title.trim(),
+                            description = state.description.trim(),
+                            painLevel = state.painLevel,
+                            occurredAt = state.occurredDate,
+                            createdAt = LocalDateTime.now(),
+                            status = InjuryStatus.ACTIVE
+                        )
                     )
-                )
+                }
+                _navigateBack.send(Unit)
+            } catch (e: Exception) {
+                Log.e("RecordInjuryViewModel", "Failed to save injury", e)
+                _uiState.update { it.copy(isSaving = false, saveError = "저장 실패. 다시 시도해주세요.") }
             }
-
-            _navigateBack.send(Unit)
         }
+    }
+
+    fun clearSaveError() {
+        _uiState.update { it.copy(saveError = null) }
     }
 }

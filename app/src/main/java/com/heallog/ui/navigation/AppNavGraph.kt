@@ -39,6 +39,8 @@ import com.heallog.ui.settings.NotificationSettingsScreen
 import com.heallog.ui.settings.SettingsScreen
 import com.heallog.ui.settings.ThemeSettingsScreen
 import kotlinx.serialization.Serializable
+import androidx.compose.ui.res.stringResource
+import com.heallog.R
 
 sealed interface Screen {
     @Serializable
@@ -110,8 +112,8 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Home, contentDescription = "홈") },
-                        label = { Text("홈") }
+                        icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.nav_home)) },
+                        label = { Text(stringResource(R.string.nav_home)) }
                     )
                     NavigationBarItem(
                         selected = currentDestination?.hasRoute(Screen.BodyMap::class) == true,
@@ -122,8 +124,8 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Outlined.AccessibilityNew, contentDescription = "바디맵") },
-                        label = { Text("바디맵") }
+                        icon = { Icon(Icons.Outlined.AccessibilityNew, contentDescription = stringResource(R.string.nav_bodymap)) },
+                        label = { Text(stringResource(R.string.nav_bodymap)) }
                     )
                     NavigationBarItem(
                         selected = currentDestination?.hasRoute(Screen.Profile::class) == true,
@@ -134,8 +136,8 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Person, contentDescription = "내 정보") },
-                        label = { Text("내 정보") }
+                        icon = { Icon(Icons.Default.Person, contentDescription = stringResource(R.string.nav_profile)) },
+                        label = { Text(stringResource(R.string.nav_profile)) }
                     )
                     NavigationBarItem(
                         selected = currentDestination?.hasRoute(Screen.Settings::class) == true,
@@ -146,8 +148,8 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = "설정") },
-                        label = { Text("설정") }
+                        icon = { Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.nav_settings)) },
+                        label = { Text(stringResource(R.string.nav_settings)) }
                     )
                 }
             }

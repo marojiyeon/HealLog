@@ -3,6 +3,10 @@ package com.heallog.widget
 import android.content.Context
 import com.heallog.data.local.database.HealLogDatabase
 import com.heallog.util.EmojiMapper
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -25,6 +29,12 @@ data class WidgetData(
  * Provides widget data from the database.
  * This should only be called from suspend contexts (e.g., GlanceAppWidget.provideGlance).
  */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface WidgetDatabaseEntryPoint {
+    fun healLogDatabase(): HealLogDatabase
+}
+
 object WidgetDataProvider {
     /**
      * Loads widget data from the database.
@@ -34,7 +44,10 @@ object WidgetDataProvider {
      * @return WidgetData containing active injuries and count
      */
     suspend fun loadWidgetData(context: Context): WidgetData {
-        val db = HealLogDatabase.getInstance(context)
+        val db = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            WidgetDatabaseEntryPoint::class.java
+        ).healLogDatabase()
         val injuryDao = db.injuryDao()
         val painLogDao = db.painLogDao()
 

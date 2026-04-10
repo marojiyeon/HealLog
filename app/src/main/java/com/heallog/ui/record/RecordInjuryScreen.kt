@@ -106,6 +106,7 @@ fun RecordInjuryScreen(
         },
         onRemovePhoto = viewModel::removePhoto,
         onClearPhotoError = viewModel::clearPhotoError,
+        onClearSaveError = viewModel::clearSaveError,
         onSave = viewModel::saveInjury
     )
 }
@@ -127,6 +128,7 @@ private fun RecordInjuryContent(
     onAddPhoto: () -> Unit,
     onRemovePhoto: (Uri) -> Unit,
     onClearPhotoError: () -> Unit,
+    onClearSaveError: () -> Unit,
     onSave: () -> Unit
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
@@ -141,6 +143,13 @@ private fun RecordInjuryContent(
         uiState.photoError?.let {
             snackbarHostState.showSnackbar(it)
             onClearPhotoError()
+        }
+    }
+
+    LaunchedEffect(uiState.saveError) {
+        uiState.saveError?.let {
+            snackbarHostState.showSnackbar(it)
+            onClearSaveError()
         }
     }
 
@@ -596,6 +605,7 @@ private fun RecordInjuryScreenPreview_Empty() {
             onAddPhoto = {},
             onRemovePhoto = {},
             onClearPhotoError = {},
+            onClearSaveError = {},
             onSave = {}
         )
     }
@@ -621,6 +631,7 @@ private fun RecordInjuryScreenPreview_WithErrors() {
             onAddPhoto = {},
             onRemovePhoto = {},
             onClearPhotoError = {},
+            onClearSaveError = {},
             onSave = {}
         )
     }
@@ -649,6 +660,7 @@ private fun RecordInjuryScreenPreview_Filled() {
             onAddPhoto = {},
             onRemovePhoto = {},
             onClearPhotoError = {},
+            onClearSaveError = {},
             onSave = {}
         )
     }
