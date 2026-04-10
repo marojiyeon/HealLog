@@ -14,6 +14,7 @@ import com.heallog.ui.detail.hospital.AddMedicationScreen
 import com.heallog.ui.detail.hospital.AddVisitScreen
 import com.heallog.ui.home.HomeScreen
 import com.heallog.ui.record.RecordInjuryScreen
+import com.heallog.ui.settings.ThemeSettingsScreen
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 
@@ -23,6 +24,9 @@ sealed interface Screen {
 
     @Serializable
     data object BodyMap : Screen
+
+    @Serializable
+    data object ThemeSettings : Screen
 
     @Serializable
     data class RecordInjury(val bodyPartId: String, val injuryId: Long = -1L) : Screen
@@ -57,7 +61,8 @@ fun AppNavGraph(navController: NavHostController) {
                 onNavigateToBodyMap = { navController.navigate(Screen.BodyMap) },
                 onNavigateToDetail = { injuryId ->
                     navController.navigate(Screen.InjuryDetail(injuryId))
-                }
+                },
+                onNavigateToSettings = { navController.navigate(Screen.ThemeSettings) }
             )
         }
 
@@ -66,6 +71,12 @@ fun AppNavGraph(navController: NavHostController) {
                 onNavigateToRecord = { bodyPartId ->
                     navController.navigate(Screen.RecordInjury(bodyPartId))
                 }
+            )
+        }
+
+        composable<Screen.ThemeSettings> {
+            ThemeSettingsScreen(
+                onNavigateBack = { navController.navigateUp() }
             )
         }
 

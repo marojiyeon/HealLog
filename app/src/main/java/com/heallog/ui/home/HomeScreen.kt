@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -27,6 +28,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -58,13 +60,15 @@ import java.time.temporal.ChronoUnit
 fun HomeScreen(
     onNavigateToBodyMap: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     HomeContent(
         uiState = uiState,
         onNavigateToBodyMap = onNavigateToBodyMap,
-        onNavigateToDetail = onNavigateToDetail
+        onNavigateToDetail = onNavigateToDetail,
+        onNavigateToSettings = onNavigateToSettings
     )
 }
 
@@ -73,7 +77,8 @@ fun HomeScreen(
 private fun HomeContent(
     uiState: HomeUiState,
     onNavigateToBodyMap: () -> Unit,
-    onNavigateToDetail: (Long) -> Unit
+    onNavigateToDetail: (Long) -> Unit,
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val injuryCount = if (uiState is HomeUiState.Success) uiState.items.size else 0
 
@@ -82,6 +87,13 @@ private fun HomeContent(
             TopAppBar(
                 title = { Text("HealLog", fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "설정",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     BadgedBox(
                         badge = {
                             if (injuryCount > 0) {
@@ -368,7 +380,8 @@ private fun HomeLoadingPreview() {
         HomeContent(
             uiState = HomeUiState.Loading,
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {}
+            onNavigateToDetail = {},
+            onNavigateToSettings = {}
         )
     }
 }
@@ -380,7 +393,8 @@ private fun HomeEmptyPreview() {
         HomeContent(
             uiState = HomeUiState.Empty,
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {}
+            onNavigateToDetail = {},
+            onNavigateToSettings = {}
         )
     }
 }
@@ -408,7 +422,8 @@ private fun HomeSuccessPreview() {
                 listOf(InjuryWithLatestLog(injury, log))
             ),
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {}
+            onNavigateToDetail = {},
+            onNavigateToSettings = {}
         )
     }
 }

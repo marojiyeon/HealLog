@@ -5,6 +5,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.heallog.model.FontScale
 
 val Typography = Typography(
     displayLarge = TextStyle(
@@ -107,3 +108,53 @@ val Typography = Typography(
         letterSpacing = 0.5.sp
     )
 )
+
+fun appTypography(fontScale: FontScale): Typography {
+    return Typography(
+        displayLarge = Typography.displayLarge.copy(
+            fontSize = Typography.displayLarge.fontSize * fontScale.scale
+        ),
+        displayMedium = Typography.displayMedium.copy(
+            fontSize = Typography.displayMedium.fontSize * fontScale.scale
+        ),
+        displaySmall = Typography.displaySmall.copy(
+            fontSize = Typography.displaySmall.fontSize * fontScale.scale
+        ),
+        headlineLarge = Typography.headlineLarge.copy(
+            fontSize = Typography.headlineLarge.fontSize * fontScale.scale
+        ),
+        headlineMedium = Typography.headlineMedium.copy(
+            fontSize = Typography.headlineMedium.fontSize * fontScale.scale
+        ),
+        headlineSmall = Typography.headlineSmall.copy(
+            fontSize = Typography.headlineSmall.fontSize * fontScale.scale
+        ),
+        titleLarge = Typography.titleLarge.copy(
+            fontSize = Typography.titleLarge.fontSize * fontScale.scale
+        ),
+        titleMedium = Typography.titleMedium.copy(
+            fontSize = Typography.titleMedium.fontSize * fontScale.scale
+        ),
+        titleSmall = Typography.titleSmall.copy(
+            fontSize = Typography.titleSmall.fontSize * fontScale.scale
+        ),
+        bodyLarge = Typography.bodyLarge.copy(
+            fontSize = Typography.bodyLarge.fontSize * fontScale.scale
+        ),
+        bodyMedium = Typography.bodyMedium.copy(
+            fontSize = Typography.bodyMedium.fontSize * fontScale.scale
+        ),
+        bodySmall = Typography.bodySmall.copy(
+            fontSize = Typography.bodySmall.fontSize * fontScale.scale
+        ),
+        labelLarge = Typography.labelLarge.copy(
+            fontSize = Typography.labelLarge.fontSize * fontScale.scale
+        ),
+        labelMedium = Typography.labelMedium.copy(
+            fontSize = Typography.labelMedium.fontSize * fontScale.scale
+        ),
+        labelSmall = Typography.labelSmall.copy(
+            fontSize = Typography.labelSmall.fontSize * fontScale.scale
+        )
+    )
+}
