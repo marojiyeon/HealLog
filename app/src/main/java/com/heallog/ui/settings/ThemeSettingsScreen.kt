@@ -1,6 +1,7 @@
 package com.heallog.ui.settings
 
 import android.os.Build
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -154,11 +155,7 @@ private fun ThemeModeSection(
         ) {
             ThemeMode.entries.forEach { mode ->
                 ModeButton(
-                    label = when (mode) {
-                        ThemeMode.LIGHT -> "라이트"
-                        ThemeMode.DARK -> "다크"
-                        ThemeMode.SYSTEM -> "시스템"
-                    },
+                    label = ThemeLabels.getThemeModeLabel(mode),
                     isSelected = selectedMode == mode,
                     onClick = { onModeSelected(mode) },
                     modifier = Modifier.weight(1f)
@@ -182,7 +179,7 @@ private fun ModeButton(
             .height(40.dp)
             .clickable(onClick = onClick),
         border = if (!isSelected) {
-            androidx.compose.material3.OutlinedButtonDefaults.outlinedButtonBorder
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
         } else {
             null
         }
@@ -289,13 +286,7 @@ private fun ColorSchemeOption(
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            text = when (scheme) {
-                ColorScheme.HEALING_GREEN -> "힐링\n그린"
-                ColorScheme.MEDICAL_BLUE -> "메디컬\n블루"
-                ColorScheme.WARMING_ORANGE -> "워밍\n오렌지"
-                ColorScheme.CALM_PURPLE -> "칼름\n퍼플"
-                ColorScheme.DYNAMIC -> "동적"
-            },
+            text = ThemeLabels.getColorSchemeLabel(scheme),
             style = MaterialTheme.typography.labelSmall,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
@@ -336,12 +327,7 @@ private fun FontScaleSection(
         ) {
             scales.forEach { scale ->
                 Text(
-                    text = when (scale) {
-                        FontScale.SMALL -> "작음"
-                        FontScale.NORMAL -> "보통"
-                        FontScale.LARGE -> "큼"
-                        FontScale.EXTRA_LARGE -> "매우큼"
-                    },
+                    text = ThemeLabels.getFontScaleLabel(scale),
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = (MaterialTheme.typography.labelSmall.fontSize * scale.scale)
                 )

@@ -6,6 +6,7 @@ import com.heallog.data.local.dao.PainLogDao
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.model.InjuryStatus
+import com.heallog.widget.WidgetUpdateManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -22,6 +23,7 @@ class InjuryRepositoryTest {
 
     private lateinit var injuryDao: InjuryDao
     private lateinit var painLogDao: PainLogDao
+    private lateinit var widgetUpdateManager: WidgetUpdateManager
     private lateinit var repository: InjuryRepository
 
     private val testInjury = Injury(
@@ -47,7 +49,8 @@ class InjuryRepositoryTest {
     fun setUp() {
         injuryDao = mockk()
         painLogDao = mockk()
-        repository = InjuryRepository(injuryDao, painLogDao)
+        widgetUpdateManager = mockk(relaxed = true)
+        repository = InjuryRepository(injuryDao, painLogDao, widgetUpdateManager)
     }
 
     @Test

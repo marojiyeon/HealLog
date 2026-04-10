@@ -47,6 +47,9 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
                 FOREIGN KEY(`hospitalVisitId`) REFERENCES `hospital_visits`(`id`) ON DELETE SET NULL
             )
         """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_hospital_visits_injuryId` ON `hospital_visits` (`injuryId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_medications_injuryId` ON `medications` (`injuryId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_medications_hospitalVisitId` ON `medications` (`hospitalVisitId`)")
     }
 }
 
@@ -67,5 +70,9 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
             )
             """.trimIndent()
         )
+        // Add missing indices from MIGRATION_2_3 (IF NOT EXISTS is safe if already present)
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_hospital_visits_injuryId` ON `hospital_visits` (`injuryId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_medications_injuryId` ON `medications` (`injuryId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_medications_hospitalVisitId` ON `medications` (`hospitalVisitId`)")
     }
 }

@@ -6,6 +6,7 @@ import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.data.preferences.VoicePreferences
 import com.heallog.data.repository.InjuryRepository
+import com.heallog.model.InjuryStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +26,12 @@ data class InjuryWithLatestLog(
 sealed interface HomeUiState {
     data object Loading : HomeUiState
     data object Empty : HomeUiState
-    data class Success(val items: List<InjuryWithLatestLog>) : HomeUiState
+    data class Success(
+        val activeItems: List<InjuryWithLatestLog>,
+        val healedItems: List<InjuryWithLatestLog>
+    ) : HomeUiState {
+        val items: List<InjuryWithLatestLog> get() = activeItems + healedItems
+    }
     data class Error(val message: String) : HomeUiState
 }
 
@@ -38,7 +44,7 @@ class HomeViewModel @Inject constructor(
     val voiceFabEnabled: StateFlow<Boolean> = voicePreferences.voiceFabEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    val uiState: StateFlow<HomeUiState> = repository.getAllActiveInjuries()
+    val uiState: StateFlow<HomeUiState> = repository.getAllInjuries()
         .flatMapLatest { injuries ->
             if (injuries.isEmpty()) {
                 flowOf(emptyList())
@@ -54,8 +60,13 @@ class HomeViewModel @Inject constructor(
             }
         }
         .map { items ->
-            if (items.isEmpty()) HomeUiState.Empty
-            else HomeUiState.Success(items)
+            if (items.isEmpty()) {
+                HomeUiState.Empty
+            } else {
+                val active = items.filter { it.injury.status != InjuryStatus.HEALED }
+                val healed = items.filter { it.injury.status == InjuryStatus.HEALED }
+                HomeUiState.Success(activeItems = active, healedItems = healed)
+            }
         }
         .catch { e -> emit(HomeUiState.Error(e.message ?: "오류가 발생했습니다")) }
         .stateIn(

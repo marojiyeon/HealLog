@@ -38,7 +38,6 @@ import androidx.compose.material3.MaterialTheme
 import com.heallog.ui.components.VoiceInputField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -65,6 +64,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
+
+// Constants
+private const val MAX_PHOTOS = 5
 
 // ---------------------------------------------------------------------------
 // Screen — wires ViewModel, side effects, activity-level launchers
@@ -141,29 +143,6 @@ private fun RecordInjuryContent(
                     }
                 }
             )
-        },
-        bottomBar = {
-            Surface(shadowElevation = 8.dp) {
-                Button(
-                    onClick = onSave,
-                    enabled = !uiState.isSaving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = when {
-                            uiState.isSaving && uiState.isEditMode -> "수정 중..."
-                            uiState.isSaving -> "저장 중..."
-                            uiState.isEditMode -> "수정 완료"
-                            else -> "저장"
-                        },
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
-            }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -234,7 +213,29 @@ private fun RecordInjuryContent(
                 }
             }
 
-            item { Spacer(Modifier.height(8.dp)) }
+            item {
+                Button(
+                    onClick = onSave,
+                    enabled = !uiState.isSaving,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = when {
+                            uiState.isSaving && uiState.isEditMode -> "수정 중..."
+                            uiState.isSaving -> "저장 중..."
+                            uiState.isEditMode -> "수정 완료"
+                            else -> "저장"
+                        },
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+
+            item { Spacer(Modifier.height(16.dp)) }
         }
     }
 

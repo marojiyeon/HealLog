@@ -2,6 +2,17 @@ package com.heallog.util
 
 import com.heallog.model.VoiceCommand
 
+/**
+ * Parses voice input text and converts it to VoiceCommand objects.
+ *
+ * Supports Korean voice commands for:
+ * - Recording injuries: "기록", "기록해", "기록하다"
+ * - Navigating home: "홈", "홈으로", "처음으로"
+ * - Setting pain level: "통증 N", "레벨 N"
+ * - Adding notes: "메모 <text>"
+ * - Navigation: "바디맵", "상세", "설정"
+ * - Plain text input (fallback)
+ */
 object VoiceCommandParser {
 
     private val koreanDigits = mapOf(
@@ -9,64 +20,74 @@ object VoiceCommandParser {
         "육" to 6, "칠" to 7, "팔" to 8, "구" to 9, "십" to 10
     )
 
-    // Matches Arabic or Korean numerals 1-10
-    private val numberRegex = Regex("([1-9]|10|일|이|삼|사|오|육|칠|팔|구|십)")
+    // Regex patterns for commands
+    private val recordCommandPatterns = listOf("기록 추가", "기록해", "기록하다", "기록하기")
+    private val homeCommandPatterns = listOf("홈으로", "홈 화면", "처음으로")
+    private val painCommandKeywords = listOf("통증", "레벨", "수준")
+    private val bodyMapNavigationPatterns = listOf("바디맵", "몸")
+    private val detailNavigationPatterns = listOf("상세", "디테일")
+    private val memoKeyword = "메모"
+    private val settingsKeyword = "설정"
 
     fun parse(text: String): VoiceCommand {
         val normalized = text.trim()
 
-        // StartRecord: "기록 추가" or "기록해"
-        if (normalized.contains("기록 추가") || normalized.contains("기록해") ||
-            normalized.contains("기록하다") || normalized.contains("기록하기")) {
-            return VoiceCommand.StartRecord
+        return when {
+            matchesRecordCommand(normalized) -> VoiceCommand.StartRecord
+            matchesHomeCommand(normalized) -> VoiceCommand.GoHome
+            matchesPainLevelCommand(normalized) -> extractPainLevel(normalized) ?: VoiceCommand.TextInput(normalized)
+            matchesMemoCommand(normalized) -> extractNote(normalized) ?: VoiceCommand.TextInput(normalized)
+            matchesBodyMapNavigation(normalized) -> VoiceCommand.NavigateTo("bodymap")
+            matchesDetailNavigation(normalized) -> VoiceCommand.NavigateTo("detail")
+            matchesSettingsNavigation(normalized) -> VoiceCommand.NavigateTo("settings")
+            else -> VoiceCommand.TextInput(normalized)
         }
-
-        // GoHome: "홈으로" or "홈"
-        if (normalized.contains("홈으로") || normalized == "홈" ||
-            normalized.contains("홈 화면") || normalized.contains("처음으로")) {
-            return VoiceCommand.GoHome
-        }
-
-        // SetPainLevel: "통증 레벨 N", "통증 N", "레벨 N", "통증 수준 N"
-        val isPainCommand = normalized.contains("통증") || normalized.contains("레벨") ||
-                normalized.contains("수준")
-        if (isPainCommand) {
-            val match = numberRegex.find(normalized)
-            if (match != null) {
-                val level = parseNumber(match.value)
-                if (level != null && level in 1..10) {
-                    return VoiceCommand.SetPainLevel(level)
-                }
-            }
-        }
-
-        // AddNote: "메모 <text>" – extract text after "메모"
-        val memoIdx = normalized.indexOf("메모")
-        if (memoIdx != -1) {
-            val noteText = normalized.substring(memoIdx + 2).trimStart()
-            if (noteText.isNotBlank()) {
-                return VoiceCommand.AddNote(noteText)
-            }
-        }
-
-        // NavigateTo: explicit navigation phrases
-        when {
-            normalized.contains("바디맵") || normalized.contains("몸") -> {
-                return VoiceCommand.NavigateTo("bodymap")
-            }
-            normalized.contains("상세") || normalized.contains("디테일") -> {
-                return VoiceCommand.NavigateTo("detail")
-            }
-            normalized.contains("설정") -> {
-                return VoiceCommand.NavigateTo("settings")
-            }
-        }
-
-        // Fallback: plain text input
-        return VoiceCommand.TextInput(normalized)
     }
 
-    private fun parseNumber(token: String): Int? {
-        return token.toIntOrNull() ?: koreanDigits[token]
+    private fun matchesRecordCommand(text: String): Boolean =
+        recordCommandPatterns.any { text.contains(it) }
+
+    private fun matchesHomeCommand(text: String): Boolean =
+        text == "홈" || homeCommandPatterns.any { text.contains(it) }
+
+    private fun matchesPainLevelCommand(text: String): Boolean =
+        painCommandKeywords.any { text.contains(it) }
+
+    private fun matchesMemoCommand(text: String): Boolean =
+        text.contains(memoKeyword)
+
+    private fun matchesBodyMapNavigation(text: String): Boolean =
+        bodyMapNavigationPatterns.any { text.contains(it) }
+
+    private fun matchesDetailNavigation(text: String): Boolean =
+        detailNavigationPatterns.any { text.contains(it) }
+
+    private fun matchesSettingsNavigation(text: String): Boolean =
+        text.contains(settingsKeyword)
+
+    /**
+     * Extracts pain level (1-10) from text containing pain-related keywords.
+     */
+    private fun extractPainLevel(text: String): VoiceCommand.SetPainLevel? {
+        val level = text.split("\\s+".toRegex())
+            .firstNotNullOfOrNull { token -> parseNumber(token)?.takeIf { it in 1..10 } }
+        return level?.let { VoiceCommand.SetPainLevel(it) }
     }
+
+    /**
+     * Extracts note text after the "메모" keyword.
+     */
+    private fun extractNote(text: String): VoiceCommand.AddNote? {
+        val memoIndex = text.indexOf(memoKeyword)
+        if (memoIndex == -1) return null
+
+        val noteText = text.substring(memoIndex + memoKeyword.length).trimStart()
+        return if (noteText.isNotBlank()) VoiceCommand.AddNote(noteText) else null
+    }
+
+    /**
+     * Parses a token as either a numeric value or a Korean digit word.
+     */
+    private fun parseNumber(token: String): Int? =
+        token.toIntOrNull() ?: koreanDigits[token]
 }

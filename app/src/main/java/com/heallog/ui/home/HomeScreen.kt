@@ -1,16 +1,5 @@
 package com.heallog.ui.home
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -50,7 +38,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,24 +46,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.model.InjuryStatus
-import com.heallog.model.VoiceCommand
+import com.heallog.ui.components.VoiceCommandFab
 import com.heallog.ui.theme.HealLogTheme
-import com.heallog.util.SpeechState
-import com.heallog.util.VoiceCommandParser
-import com.heallog.util.rememberSpeechRecognizerManager
+import com.heallog.util.EmojiMapper
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -111,7 +93,7 @@ private fun HomeContent(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToNotificationSettings: () -> Unit = {}
 ) {
-    val injuryCount = if (uiState is HomeUiState.Success) uiState.items.size else 0
+    val injuryCount = if (uiState is HomeUiState.Success) uiState.activeItems.size else 0
 
     Scaffold(
         topBar = {
@@ -146,13 +128,6 @@ private fun HomeContent(
                             tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
-                    androidx.compose.material3.IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "설정",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -182,7 +157,8 @@ private fun HomeContent(
                 modifier = Modifier.padding(innerPadding)
             )
             is HomeUiState.Success -> InjuryListContent(
-                items = uiState.items,
+                activeItems = uiState.activeItems,
+                healedItems = uiState.healedItems,
                 onNavigateToDetail = onNavigateToDetail,
                 modifier = Modifier.padding(innerPadding)
             )
@@ -260,20 +236,65 @@ private fun ErrorContent(message: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun InjuryListContent(
-    items: List<InjuryWithLatestLog>,
+    activeItems: List<InjuryWithLatestLog>,
+    healedItems: List<InjuryWithLatestLog>,
     onNavigateToDetail: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var healedExpanded by remember { mutableStateOf(false) }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(items, key = { it.injury.id }) { item ->
+        if (activeItems.isEmpty() && healedItems.isNotEmpty()) {
+            item {
+                Text(
+                    text = "진행 중인 부상이 없어요",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        }
+
+        items(activeItems, key = { it.injury.id }) { item ->
             InjuryCard(
                 item = item,
                 onClick = { onNavigateToDetail(item.injury.id) }
             )
+        }
+
+        if (healedItems.isNotEmpty()) {
+            item(key = "healed_header") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = if (activeItems.isNotEmpty()) 8.dp else 0.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "완치된 기록 (${healedItems.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    TextButton(onClick = { healedExpanded = !healedExpanded }) {
+                        Text(if (healedExpanded) "접기" else "보기")
+                    }
+                }
+            }
+
+            if (healedExpanded) {
+                items(healedItems, key = { "healed_${it.injury.id}" }) { item ->
+                    InjuryCard(
+                        item = item,
+                        onClick = { onNavigateToDetail(item.injury.id) }
+                    )
+                }
+            }
         }
     }
 }
@@ -301,7 +322,7 @@ private fun InjuryCard(
                     .background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Text(bodyPartEmoji(item.injury.bodyPart), fontSize = 22.sp)
+                Text(EmojiMapper.getEmojiForBodyPart(item.injury.bodyPart), fontSize = 22.sp)
             }
 
             Spacer(Modifier.width(12.dp))
@@ -405,116 +426,6 @@ private fun StatusChip(status: InjuryStatus) {
     }
 }
 
-@Composable
-private fun VoiceCommandFab(
-    onNavigateToBodyMap: () -> Unit
-) {
-    val context = LocalContext.current
-    val manager = rememberSpeechRecognizerManager()
-    val state by manager.state.collectAsState()
-    var hasPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-                    == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        hasPermission = granted
-        if (granted) manager.startListening()
-    }
-
-    LaunchedEffect(state) {
-        if (state is SpeechState.Result) {
-            val text = (state as SpeechState.Result).text
-            val command = VoiceCommandParser.parse(text)
-            when (command) {
-                is VoiceCommand.StartRecord -> onNavigateToBodyMap()
-                is VoiceCommand.NavigateTo -> {
-                    if (command.destination == "bodymap") onNavigateToBodyMap()
-                }
-                is VoiceCommand.GoHome -> {
-                    Toast.makeText(context, "이미 홈 화면입니다", Toast.LENGTH_SHORT).show()
-                }
-                else -> {
-                    Toast.makeText(context, "인식됨: $text", Toast.LENGTH_SHORT).show()
-                }
-            }
-            manager.reset()
-        }
-    }
-
-    if (!manager.isAvailable) return
-
-    val isListening = state is SpeechState.Listening
-    val isProcessing = state is SpeechState.Processing
-
-    val infiniteTransition = rememberInfiniteTransition(label = "voice_fab_pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "voice_fab_scale"
-    )
-
-    SmallFloatingActionButton(
-        onClick = {
-            when {
-                isListening || isProcessing -> manager.stopListening()
-                hasPermission -> manager.startListening()
-                else -> permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        },
-        containerColor = when {
-            isListening -> MaterialTheme.colorScheme.error
-            isProcessing -> MaterialTheme.colorScheme.secondaryContainer
-            else -> MaterialTheme.colorScheme.secondaryContainer
-        },
-        modifier = if (isListening) Modifier.scale(pulseScale) else Modifier
-    ) {
-        if (isProcessing) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Mic,
-                contentDescription = if (isListening) "음성 명령 인식 중" else "음성 명령",
-                tint = if (isListening) MaterialTheme.colorScheme.onError
-                else MaterialTheme.colorScheme.onSecondaryContainer
-            )
-        }
-    }
-}
-
-private fun bodyPartEmoji(bodyPartId: String): String = when (bodyPartId) {
-    "head" -> "🧠"
-    "neck" -> "🫙"
-    "left_shoulder", "right_shoulder" -> "💪"
-    "left_upper_arm", "right_upper_arm" -> "💪"
-    "left_elbow", "right_elbow" -> "🦾"
-    "left_forearm", "right_forearm" -> "🦾"
-    "left_wrist", "right_wrist" -> "⌚"
-    "left_hand", "right_hand" -> "🖐"
-    "chest" -> "🫀"
-    "abdomen" -> "🫁"
-    "upper_back", "lower_back" -> "🔙"
-    "left_hip", "right_hip" -> "🦴"
-    "left_thigh", "right_thigh" -> "🦵"
-    "left_knee", "right_knee" -> "🦵"
-    "left_shin", "right_shin" -> "🦵"
-    "left_ankle", "right_ankle" -> "🦶"
-    "left_foot", "right_foot" -> "🦶"
-    else -> "🩹"
-}
-
 // --- Previews ---
 
 @Preview(showBackground = true, name = "Loading")
@@ -565,7 +476,8 @@ private fun HomeSuccessPreview() {
     HealLogTheme {
         HomeContent(
             uiState = HomeUiState.Success(
-                listOf(InjuryWithLatestLog(injury, log))
+                activeItems = listOf(InjuryWithLatestLog(injury, log)),
+                healedItems = emptyList()
             ),
             voiceFabEnabled = false,
             onNavigateToBodyMap = {},

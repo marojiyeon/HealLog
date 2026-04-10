@@ -1,12 +1,16 @@
 package com.heallog.widget
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.ExperimentalGlanceApi
 import androidx.glance.GlanceId
+import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
-import androidx.glance.text.Text
+import androidx.glance.action.clickable
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -14,68 +18,58 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
-import androidx.glance.unit.dp
-import androidx.glance.unit.sp
-import androidx.glance.action.clickable
-import androidx.glance.action.actionStartActivity
 
 class HealLogSmallWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        // WidgetDataProvider.loadWidgetData is now a suspend function (no runBlocking needed)
+        val data = WidgetDataProvider.loadWidgetData(context)
         provideContent {
-            SmallWidgetContent(context)
+            SmallWidgetContent(data)
         }
     }
 
-    private suspend fun SmallWidgetContent(context: Context) {
-        val data = WidgetDataProvider.loadWidgetData(context)
+    @OptIn(ExperimentalGlanceApi::class)
+    @Composable
+    private fun SmallWidgetContent(data: WidgetData) {
         val injury = data.activeInjuries.firstOrNull()
 
         Column(
-            modifier = fillMaxSize()
+            modifier = GlanceModifier.fillMaxSize()
                 .padding(8.dp)
                 .clickable(
-                    actionStartActivity(
-                        Intent(Intent.ACTION_VIEW).apply {
-                            data = if (injury != null) {
-                                Uri.parse("heallog://injury/${injury.id}")
-                            } else {
-                                Uri.parse("heallog://home")
-                            }
-                        }
-                    )
+                    actionStartActivity(createNavigationIntent(injury?.id))
                 )
         ) {
             if (injury != null) {
-                Row(
-                    modifier = fillMaxWidth()
-                ) {
+                Row(modifier = GlanceModifier.fillMaxWidth()) {
                     Text(
                         text = injury.bodyPartEmoji,
-                        style = TextStyle(fontSize = sp(20))
+                        style = TextStyle(fontSize = 20.sp)
                     )
-                    Spacer(modifier = width(4.dp))
+                    Spacer(modifier = GlanceModifier.width(4.dp))
                     Text(
                         text = injury.title,
                         maxLines = 1,
-                        style = TextStyle(fontSize = sp(12))
+                        style = TextStyle(fontSize = 12.sp)
                     )
                 }
                 Row {
                     Text(
                         text = "통증: ${injury.currentPainLevel}/10",
-                        style = TextStyle(fontSize = sp(10))
+                        style = TextStyle(fontSize = 10.sp)
                     )
-                    Spacer(modifier = width(4.dp))
+                    Spacer(modifier = GlanceModifier.width(4.dp))
                     Text(
                         text = "${injury.daysSinceOccurred}일",
-                        style = TextStyle(fontSize = sp(10))
+                        style = TextStyle(fontSize = 10.sp)
                     )
                 }
             } else {
                 Text(
                     text = "활성 부상 없음 ✨",
-                    style = TextStyle(fontSize = sp(12))
+                    style = TextStyle(fontSize = 12.sp)
                 )
             }
         }

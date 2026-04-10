@@ -2,8 +2,8 @@ package com.heallog.ui.bodymap
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -68,7 +68,6 @@ fun BodyMapView(
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(0.45f)          // tall narrow canvas suits a human figure
             .pointerInput(isFrontView) {
                 detectTapGestures { tapOffset ->
                     val w = size.width.toFloat()
@@ -297,7 +296,7 @@ private fun Offset.distanceTo(other: Offset): Float {
 // Preview
 // ---------------------------------------------------------------------------
 
-@Preview(showBackground = true, widthDp = 320)
+@Preview(showBackground = true, widthDp = 320, heightDp = 600)
 @Composable
 private fun BodyMapViewPreview() {
     HealLogTheme {
@@ -305,7 +304,8 @@ private fun BodyMapViewPreview() {
             activeInjuryParts = setOf("left_knee", "right_shoulder"),
             selectedPartId = "left_knee",
             isFrontView = true,
-            onBodyPartSelected = {}
+            onBodyPartSelected = {},
+            modifier = Modifier.height(560.dp)
         )
     }
 }

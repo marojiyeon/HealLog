@@ -1,25 +1,25 @@
 package com.heallog.data.repository
 
-import android.content.Context
-import androidx.glance.appwidget.GlanceAppWidgetManager
-import androidx.glance.appwidget.updateAll
 import com.heallog.data.local.dao.InjuryDao
 import com.heallog.data.local.dao.PainLogDao
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
-import com.heallog.widget.HealLogSmallWidget
-import com.heallog.widget.HealLogMediumWidget
-import com.heallog.widget.HealLogLargeWidget
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.heallog.widget.WidgetUpdateManager
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Repository for managing injuries and pain logs.
+ *
+ * This repository delegates all data access to DAOs and coordinates
+ * widget updates through the WidgetUpdateManager when data changes.
+ */
 @Singleton
 class InjuryRepository @Inject constructor(
     private val injuryDao: InjuryDao,
     private val painLogDao: PainLogDao,
-    @ApplicationContext private val context: Context
+    private val widgetUpdateManager: WidgetUpdateManager
 ) {
 
     // --- Injury ---
@@ -32,18 +32,18 @@ class InjuryRepository @Inject constructor(
 
     suspend fun insertInjury(injury: Injury): Long {
         val result = injuryDao.insertInjury(injury)
-        updateWidgets()
+        widgetUpdateManager.updateAllWidgets()
         return result
     }
 
     suspend fun updateInjury(injury: Injury) {
         injuryDao.updateInjury(injury)
-        updateWidgets()
+        widgetUpdateManager.updateAllWidgets()
     }
 
     suspend fun deleteInjury(injury: Injury) {
         injuryDao.deleteInjury(injury)
-        updateWidgets()
+        widgetUpdateManager.updateAllWidgets()
     }
 
     // --- PainLog ---
@@ -55,28 +55,17 @@ class InjuryRepository @Inject constructor(
 
     suspend fun insertLog(log: PainLog): Long {
         val result = painLogDao.insertLog(log)
-        updateWidgets()
+        widgetUpdateManager.updateAllWidgets()
         return result
     }
 
     suspend fun updateLog(log: PainLog) {
         painLogDao.updateLog(log)
-        updateWidgets()
+        widgetUpdateManager.updateAllWidgets()
     }
 
     suspend fun deleteLog(log: PainLog) {
         painLogDao.deleteLog(log)
-        updateWidgets()
-    }
-
-    private suspend fun updateWidgets() {
-        try {
-            val glanceManager = GlanceAppWidgetManager(context)
-            HealLogSmallWidget().updateAll(glanceManager, context)
-            HealLogMediumWidget().updateAll(glanceManager, context)
-            HealLogLargeWidget().updateAll(glanceManager, context)
-        } catch (e: Exception) {
-            // Silently fail if widgets are not installed
-        }
+        widgetUpdateManager.updateAllWidgets()
     }
 }
