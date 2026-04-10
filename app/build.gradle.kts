@@ -85,6 +85,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 
+    // Glance (App Widgets)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
 
@@ -104,10 +108,6 @@ dependencies {
 
     // Material Icons Extended (for Mic icon)
     implementation(libs.androidx.compose.material.icons.extended)
-
-    // Glance (App Widgets)
-    implementation("androidx.glance:glance-appwidget:1.1.1")
-    implementation("androidx.glance:glance-material3:1.1.1")
 
     // Tests
     testImplementation(libs.junit)

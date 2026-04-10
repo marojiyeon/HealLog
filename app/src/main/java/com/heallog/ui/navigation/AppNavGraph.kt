@@ -25,6 +25,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navDeepLink
 import androidx.navigation.toRoute
 import com.heallog.ui.bodymap.BodyMapScreen
 import com.heallog.ui.detail.InjuryDetailScreen
@@ -161,7 +162,9 @@ fun AppNavGraph(navController: NavHostController) {
             popEnterTransition = { popEnterTransition },
             popExitTransition = { popExitTransition }
         ) {
-            composable<Screen.Home> {
+            composable<Screen.Home>(
+                deepLinks = listOf(navDeepLink { uriPattern = "heallog://home" })
+            ) {
                 HomeScreen(
                     onNavigateToBodyMap = {
                         navController.navigate(Screen.BodyMap) {
@@ -186,7 +189,9 @@ fun AppNavGraph(navController: NavHostController) {
                 )
             }
 
-            composable<Screen.BodyMap> {
+            composable<Screen.BodyMap>(
+                deepLinks = listOf(navDeepLink { uriPattern = "heallog://bodymap" })
+            ) {
                 BodyMapScreen(
                     onNavigateToRecord = { bodyPartId ->
                         navController.navigate(Screen.RecordInjury(bodyPartId))
@@ -225,7 +230,9 @@ fun AppNavGraph(navController: NavHostController) {
                 )
             }
 
-            composable<Screen.InjuryDetail> { backStackEntry ->
+            composable<Screen.InjuryDetail>(
+                deepLinks = listOf(navDeepLink { uriPattern = "heallog://injury/{injuryId}" })
+            ) { backStackEntry ->
                 val route = backStackEntry.toRoute<Screen.InjuryDetail>()
                 InjuryDetailScreen(
                     injuryId = route.injuryId,

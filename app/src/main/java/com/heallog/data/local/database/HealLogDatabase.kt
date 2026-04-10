@@ -1,6 +1,8 @@
 package com.heallog.data.local.database
 
+import android.content.Context
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.heallog.data.local.dao.HospitalVisitDao
@@ -26,4 +28,22 @@ abstract class HealLogDatabase : RoomDatabase() {
     abstract fun hospitalVisitDao(): HospitalVisitDao
     abstract fun medicationDao(): MedicationDao
     abstract fun notificationDao(): NotificationDao
+
+    companion object {
+        @Volatile
+        private var instance: HealLogDatabase? = null
+
+        fun getInstance(context: Context): HealLogDatabase {
+            return instance ?: synchronized(this) {
+                instance ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    HealLogDatabase::class.java,
+                    "heallog.db"
+                )
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .build()
+                    .also { instance = it }
+            }
+        }
+    }
 }
