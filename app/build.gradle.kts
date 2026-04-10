@@ -83,6 +83,12 @@ dependencies {
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
 
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+
+    // Material Icons Extended (for Mic icon)
+    implementation(libs.androidx.compose.material.icons.extended)
+
     // Tests
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

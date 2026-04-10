@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
+import com.heallog.data.preferences.VoicePreferences
 import com.heallog.data.repository.InjuryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,8 +31,12 @@ sealed interface HomeUiState {
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: InjuryRepository
+    private val repository: InjuryRepository,
+    private val voicePreferences: VoicePreferences
 ) : ViewModel() {
+
+    val voiceFabEnabled: StateFlow<Boolean> = voicePreferences.voiceFabEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val uiState: StateFlow<HomeUiState> = repository.getAllActiveInjuries()
         .flatMapLatest { injuries ->
