@@ -3,9 +3,11 @@ package com.heallog.di
 import android.content.Context
 import androidx.room.Room
 import com.heallog.data.local.dao.InjuryDao
+import com.heallog.data.local.dao.NotificationDao
 import com.heallog.data.local.dao.PainLogDao
 import com.heallog.data.local.database.HealLogDatabase
 import com.heallog.data.local.database.MIGRATION_1_2
+import com.heallog.data.local.database.MIGRATION_2_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,7 +27,7 @@ object DatabaseModule {
             HealLogDatabase::class.java,
             "heallog.db"
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides
@@ -33,4 +35,7 @@ object DatabaseModule {
 
     @Provides
     fun providePainLogDao(db: HealLogDatabase): PainLogDao = db.painLogDao()
+
+    @Provides
+    fun provideNotificationDao(db: HealLogDatabase): NotificationDao = db.notificationDao()
 }

@@ -12,6 +12,7 @@ import com.heallog.ui.bodymap.BodyMapScreen
 import com.heallog.ui.detail.InjuryDetailScreen
 import com.heallog.ui.home.HomeScreen
 import com.heallog.ui.record.RecordInjuryScreen
+import com.heallog.ui.settings.NotificationSettingsScreen
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 
@@ -27,6 +28,9 @@ sealed interface Screen {
 
     @Serializable
     data class InjuryDetail(val injuryId: Long) : Screen
+
+    @Serializable
+    data object NotificationSettings : Screen
 }
 
 private val enterTransition = slideInHorizontally(initialOffsetX = { it }) + fadeIn()
@@ -49,6 +53,9 @@ fun AppNavGraph(navController: NavHostController) {
                 onNavigateToBodyMap = { navController.navigate(Screen.BodyMap) },
                 onNavigateToDetail = { injuryId ->
                     navController.navigate(Screen.InjuryDetail(injuryId))
+                },
+                onNavigateToNotificationSettings = {
+                    navController.navigate(Screen.NotificationSettings)
                 }
             )
         }
@@ -77,6 +84,12 @@ fun AppNavGraph(navController: NavHostController) {
                         Screen.RecordInjury(bodyPartId = bodyPartId, injuryId = route.injuryId)
                     )
                 }
+            )
+        }
+
+        composable<Screen.NotificationSettings> {
+            NotificationSettingsScreen(
+                onNavigateBack = { navController.navigateUp() }
             )
         }
     }

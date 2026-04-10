@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -27,6 +28,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -58,13 +60,15 @@ import java.time.temporal.ChronoUnit
 fun HomeScreen(
     onNavigateToBodyMap: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
+    onNavigateToNotificationSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     HomeContent(
         uiState = uiState,
         onNavigateToBodyMap = onNavigateToBodyMap,
-        onNavigateToDetail = onNavigateToDetail
+        onNavigateToDetail = onNavigateToDetail,
+        onNavigateToNotificationSettings = onNavigateToNotificationSettings
     )
 }
 
@@ -73,7 +77,8 @@ fun HomeScreen(
 private fun HomeContent(
     uiState: HomeUiState,
     onNavigateToBodyMap: () -> Unit,
-    onNavigateToDetail: (Long) -> Unit
+    onNavigateToDetail: (Long) -> Unit,
+    onNavigateToNotificationSettings: () -> Unit = {}
 ) {
     val injuryCount = if (uiState is HomeUiState.Success) uiState.items.size else 0
 
@@ -82,6 +87,13 @@ private fun HomeContent(
             TopAppBar(
                 title = { Text("HealLog", fontWeight = FontWeight.Bold) },
                 actions = {
+                    IconButton(onClick = onNavigateToNotificationSettings) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "알림 설정",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     BadgedBox(
                         badge = {
                             if (injuryCount > 0) {
@@ -368,7 +380,8 @@ private fun HomeLoadingPreview() {
         HomeContent(
             uiState = HomeUiState.Loading,
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {}
+            onNavigateToDetail = {},
+            onNavigateToNotificationSettings = {}
         )
     }
 }
@@ -380,7 +393,8 @@ private fun HomeEmptyPreview() {
         HomeContent(
             uiState = HomeUiState.Empty,
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {}
+            onNavigateToDetail = {},
+            onNavigateToNotificationSettings = {}
         )
     }
 }
@@ -408,7 +422,8 @@ private fun HomeSuccessPreview() {
                 listOf(InjuryWithLatestLog(injury, log))
             ),
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {}
+            onNavigateToDetail = {},
+            onNavigateToNotificationSettings = {}
         )
     }
 }
