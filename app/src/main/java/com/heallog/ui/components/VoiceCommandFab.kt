@@ -2,7 +2,6 @@ package com.heallog.ui.components
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -14,10 +13,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -48,6 +50,7 @@ import com.heallog.util.rememberSpeechRecognizerManager
 @Composable
 fun VoiceCommandFab(
     onNavigateToBodyMap: () -> Unit,
+    onShowMessage: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -59,6 +62,7 @@ fun VoiceCommandFab(
                     == PackageManager.PERMISSION_GRANTED
         )
     }
+    var showAudioRationale by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -72,9 +76,28 @@ fun VoiceCommandFab(
         if (state is SpeechState.Result) {
             val text = (state as SpeechState.Result).text
             val command = VoiceCommandParser.parse(text)
-            handleVoiceCommand(command, context, onNavigateToBodyMap)
+            handleVoiceCommand(command, onNavigateToBodyMap, onShowMessage)
             manager.reset()
         }
+    }
+
+    if (showAudioRationale) {
+        AlertDialog(
+            onDismissRequest = { showAudioRationale = false },
+            title = { Text("마이크 권한이 필요합니다") },
+            text = { Text("음성으로 부상 부위와 통증 수준을 기록할 수 있습니다.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAudioRationale = false
+                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }) { Text("허용") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAudioRationale = false }) {
+                    Text("취소")
+                }
+            }
+        )
     }
 
     if (!manager.isAvailable) return
@@ -98,7 +121,7 @@ fun VoiceCommandFab(
             when {
                 isListening || isProcessing -> manager.stopListening()
                 hasPermission -> manager.startListening()
-                else -> permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                else -> showAudioRationale = true
             }
         },
         containerColor = when {
@@ -130,8 +153,8 @@ fun VoiceCommandFab(
  */
 private fun handleVoiceCommand(
     command: VoiceCommand,
-    context: android.content.Context,
-    onNavigateToBodyMap: () -> Unit
+    onNavigateToBodyMap: () -> Unit,
+    onShowMessage: (String) -> Unit
 ) {
     when (command) {
         is VoiceCommand.StartRecord -> onNavigateToBodyMap()
@@ -139,17 +162,16 @@ private fun handleVoiceCommand(
             if (command.destination == "bodymap") onNavigateToBodyMap()
         }
         is VoiceCommand.GoHome -> {
-            Toast.makeText(context, "이미 홈 화면입니다", Toast.LENGTH_SHORT).show()
+            onShowMessage("이미 홈 화면입니다")
         }
         else -> {
-            // Other commands (AddNote, SetPainLevel, TextInput) produce toast
             val feedbackText = when (command) {
                 is VoiceCommand.TextInput -> "인식됨: ${command.text}"
                 is VoiceCommand.AddNote -> "메모: ${command.text}"
                 is VoiceCommand.SetPainLevel -> "통증: ${command.level}/10"
                 else -> "음성 입력: $command"
             }
-            Toast.makeText(context, feedbackText, Toast.LENGTH_SHORT).show()
+            onShowMessage(feedbackText)
         }
     }
 }

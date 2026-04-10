@@ -51,7 +51,7 @@ class HealLogMediumWidget : GlanceAppWidget() {
             data.activeInjuries.forEach { injury ->
                 InjuryRow(
                     injury = injury,
-                    onClick = { createNavigationIntent(injury.id) },
+                    onClick = createNavigationIntent(injury.id),
                     showPainBar = true
                 )
                 Spacer(modifier = GlanceModifier.height(2.dp))

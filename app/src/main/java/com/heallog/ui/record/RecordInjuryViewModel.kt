@@ -36,7 +36,8 @@ data class RecordInjuryUiState(
     val occurredDate: LocalDate = LocalDate.now(),
     val photoUris: List<Uri> = emptyList(),
     val isSaving: Boolean = false,
-    val isEditMode: Boolean = false
+    val isEditMode: Boolean = false,
+    val photoError: String? = null
 )
 
 @HiltViewModel
@@ -63,6 +64,9 @@ class RecordInjuryViewModel @Inject constructor(
     // The existing injury loaded in edit mode, used when saving updates
     private var existingInjury: Injury? = null
 
+    // Captured after loadExistingInjury() to detect unsaved changes in edit mode
+    private var _originalState: RecordInjuryUiState? = null
+
     init {
         if (injuryId != NO_INJURY_ID) {
             loadExistingInjury()
@@ -84,6 +88,7 @@ class RecordInjuryViewModel @Inject constructor(
                         isEditMode = true
                     )
                 }
+                _originalState = _uiState.value
             }
         }
     }
@@ -108,8 +113,30 @@ class RecordInjuryViewModel @Inject constructor(
 
     fun addPhoto(uri: Uri) {
         val current = _uiState.value.photoUris
-        if (current.size < MAX_PHOTOS) {
-            _uiState.update { it.copy(photoUris = current + uri) }
+        if (current.size >= MAX_PHOTOS) {
+            _uiState.update { it.copy(photoError = "사진은 최대 ${MAX_PHOTOS}장까지 추가할 수 있습니다.") }
+            return
+        }
+        _uiState.update { it.copy(photoUris = current + uri) }
+    }
+
+    fun clearPhotoError() {
+        _uiState.update { it.copy(photoError = null) }
+    }
+
+    fun hasUnsavedChanges(): Boolean {
+        val current = _uiState.value
+        val original = _originalState
+        return if (current.isEditMode && original != null) {
+            current.title != original.title ||
+            current.description != original.description ||
+            current.painLevel != original.painLevel ||
+            current.photoUris != original.photoUris
+        } else {
+            current.title.isNotBlank() ||
+            current.description.isNotBlank() ||
+            current.isPainLevelTouched ||
+            current.photoUris.isNotEmpty()
         }
     }
 

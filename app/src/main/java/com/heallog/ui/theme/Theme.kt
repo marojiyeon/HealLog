@@ -9,6 +9,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.heallog.model.AppThemeSettings
 import com.heallog.model.ColorScheme
 import com.heallog.model.ThemeMode
@@ -60,4 +61,11 @@ fun HealLogTheme(
         typography = typography,
         content = content
     )
+}
+
+object HealLogSpacing {
+    val ContentPadding = 16.dp   // 화면 좌우 여백
+    val ItemSpacing    = 12.dp   // 리스트 아이템 간격
+    val SectionSpacing = 16.dp   // 섹션 간 간격
+    val LargeSpacing   = 24.dp   // 큰 간격 (EmptyState 등)
 }

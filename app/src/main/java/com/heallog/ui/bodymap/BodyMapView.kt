@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -24,17 +25,6 @@ import com.heallog.model.BodyPartDef
 import com.heallog.model.BodyPartPosition
 import com.heallog.model.BodyParts
 import com.heallog.ui.theme.HealLogTheme
-
-// ---------------------------------------------------------------------------
-// Colors
-// ---------------------------------------------------------------------------
-private val ColorSilhouette = Color(0xFFCFD8DC)       // blue-grey 100
-private val ColorSilhouetteStroke = Color(0xFF90A4AE) // blue-grey 300
-private val ColorHitRegion = Color(0x22007AFF)         // translucent blue
-private val ColorSelected = Color(0xFF1976D2)          // blue 700
-private val ColorSelectedRing = Color(0x441976D2)
-private val ColorInjuryDot = Color(0xFFE53935)         // red 600
-private val ColorInjuryDotBorder = Color(0xFFFFFFFF)
 
 // ---------------------------------------------------------------------------
 // Geometry constants (all in normalised 0..1 space; scaled at draw time)
@@ -58,6 +48,15 @@ fun BodyMapView(
     onBodyPartSelected: (BodyPart) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Capture Material3 colors before entering Canvas (no CompositionLocal inside DrawScope)
+    val colorSilhouette      = MaterialTheme.colorScheme.surfaceVariant
+    val colorStroke          = MaterialTheme.colorScheme.outline
+    val colorHitRegion       = MaterialTheme.colorScheme.primary.copy(alpha = 0.13f)
+    val colorSelected        = MaterialTheme.colorScheme.primary
+    val colorSelectedRing    = MaterialTheme.colorScheme.primary.copy(alpha = 0.27f)
+    val colorInjuryDot       = MaterialTheme.colorScheme.error
+    val colorInjuryDotBorder = MaterialTheme.colorScheme.surface
+
     // Pre-filter to only the parts visible on the current face.
     val visibleDefs = remember(isFrontView) {
         BodyParts.definitions.filter { def ->
@@ -91,13 +90,17 @@ fun BodyMapView(
         val w = size.width
         val h = size.height
 
-        drawSilhouette(w, h)
+        drawSilhouette(w, h, colorSilhouette, colorStroke)
 
         visibleDefs.forEach { def ->
             val pos = (if (isFrontView) def.frontPosition else def.backPosition) ?: return@forEach
             val isSelected = def.part.id == selectedPartId
             val hasInjury = def.part.id in activeInjuryParts
-            drawBodyPartRegion(pos, w, h, isSelected, hasInjury)
+            drawBodyPartRegion(
+                pos, w, h, isSelected, hasInjury,
+                colorHitRegion, colorSelected, colorSelectedRing,
+                colorInjuryDot, colorInjuryDotBorder
+            )
         }
     }
 }
@@ -106,20 +109,23 @@ fun BodyMapView(
 // Silhouette drawing — geometric primitives only, no assets needed
 // ---------------------------------------------------------------------------
 
-private fun DrawScope.drawSilhouette(w: Float, h: Float) {
+private fun DrawScope.drawSilhouette(
+    w: Float, h: Float,
+    colorSilhouette: Color, colorStroke: Color
+) {
     val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
 
     // --- Head ---
     val headCx = w * 0.50f
     val headCy = h * 0.055f
     val headR  = w * 0.085f
-    drawCircle(ColorSilhouette, headR, Offset(headCx, headCy))
-    drawCircle(ColorSilhouetteStroke, headR, Offset(headCx, headCy), style = stroke)
+    drawCircle(colorSilhouette, headR, Offset(headCx, headCy))
+    drawCircle(colorStroke, headR, Offset(headCx, headCy), style = stroke)
 
     // --- Neck ---
     val neckHalfW = w * 0.04f
     drawRect(
-        color = ColorSilhouette,
+        color = colorSilhouette,
         topLeft = Offset(headCx - neckHalfW, headCy + headR - 2.dp.toPx()),
         size = Size(neckHalfW * 2, h * 0.06f)
     )
@@ -140,8 +146,8 @@ private fun DrawScope.drawSilhouette(w: Float, h: Float) {
         lineTo(headCx - torsoHalfW * 1.0f,  torsoTop + h * 0.14f) // left armpit
         close()
     }
-    drawPath(torsoPath, ColorSilhouette)
-    drawPath(torsoPath, ColorSilhouetteStroke, style = stroke)
+    drawPath(torsoPath, colorSilhouette)
+    drawPath(torsoPath, colorStroke, style = stroke)
 
     // --- Left arm ---
     drawArm(
@@ -149,7 +155,8 @@ private fun DrawScope.drawSilhouette(w: Float, h: Float) {
         elbow    = Offset(w * 0.18f, h * 0.34f),
         wrist    = Offset(w * 0.14f, h * 0.44f),
         hand     = Offset(w * 0.12f, h * 0.50f),
-        w = w, stroke = stroke
+        w = w, stroke = stroke,
+        colorSilhouette = colorSilhouette, colorStroke = colorStroke
     )
 
     // --- Right arm ---
@@ -158,7 +165,8 @@ private fun DrawScope.drawSilhouette(w: Float, h: Float) {
         elbow    = Offset(w * 0.82f, h * 0.34f),
         wrist    = Offset(w * 0.86f, h * 0.44f),
         hand     = Offset(w * 0.88f, h * 0.50f),
-        w = w, stroke = stroke
+        w = w, stroke = stroke,
+        colorSilhouette = colorSilhouette, colorStroke = colorStroke
     )
 
     // --- Left leg ---
@@ -167,7 +175,8 @@ private fun DrawScope.drawSilhouette(w: Float, h: Float) {
         knee  = Offset(w * 0.375f, h * 0.70f),
         ankle = Offset(w * 0.37f,  h * 0.85f),
         foot  = Offset(w * 0.34f,  h * 0.93f),
-        w = w, stroke = stroke
+        w = w, stroke = stroke,
+        colorSilhouette = colorSilhouette, colorStroke = colorStroke
     )
 
     // --- Right leg ---
@@ -176,13 +185,15 @@ private fun DrawScope.drawSilhouette(w: Float, h: Float) {
         knee  = Offset(w * 0.625f, h * 0.70f),
         ankle = Offset(w * 0.63f,  h * 0.85f),
         foot  = Offset(w * 0.66f,  h * 0.93f),
-        w = w, stroke = stroke
+        w = w, stroke = stroke,
+        colorSilhouette = colorSilhouette, colorStroke = colorStroke
     )
 }
 
 private fun DrawScope.drawArm(
     shoulder: Offset, elbow: Offset, wrist: Offset, hand: Offset,
-    w: Float, stroke: Stroke
+    w: Float, stroke: Stroke,
+    colorSilhouette: Color, colorStroke: Color
 ) {
     val armHalfW = w * 0.045f
     val path = Path().apply {
@@ -200,17 +211,18 @@ private fun DrawScope.drawArm(
         )
         close()
     }
-    drawPath(path, ColorSilhouette)
-    drawPath(path, ColorSilhouetteStroke, style = stroke)
+    drawPath(path, colorSilhouette)
+    drawPath(path, colorStroke, style = stroke)
 
     // Hand
-    drawCircle(ColorSilhouette, w * 0.038f, hand)
-    drawCircle(ColorSilhouetteStroke, w * 0.038f, hand, style = stroke)
+    drawCircle(colorSilhouette, w * 0.038f, hand)
+    drawCircle(colorStroke, w * 0.038f, hand, style = stroke)
 }
 
 private fun DrawScope.drawLeg(
     hip: Offset, knee: Offset, ankle: Offset, foot: Offset,
-    w: Float, stroke: Stroke
+    w: Float, stroke: Stroke,
+    colorSilhouette: Color, colorStroke: Color
 ) {
     val legHalfW = w * 0.058f
     val path = Path().apply {
@@ -228,19 +240,19 @@ private fun DrawScope.drawLeg(
         )
         close()
     }
-    drawPath(path, ColorSilhouette)
-    drawPath(path, ColorSilhouetteStroke, style = stroke)
+    drawPath(path, colorSilhouette)
+    drawPath(path, colorStroke, style = stroke)
 
     // Foot
     val footW = w * 0.075f
     val footH = w * 0.03f
     drawOval(
-        color = ColorSilhouette,
+        color = colorSilhouette,
         topLeft = Offset(foot.x - footW * 0.4f, foot.y - footH * 0.5f),
         size = Size(footW, footH)
     )
     drawOval(
-        color = ColorSilhouetteStroke,
+        color = colorStroke,
         topLeft = Offset(foot.x - footW * 0.4f, foot.y - footH * 0.5f),
         size = Size(footW, footH),
         style = stroke
@@ -256,7 +268,12 @@ private fun DrawScope.drawBodyPartRegion(
     w: Float,
     h: Float,
     isSelected: Boolean,
-    hasInjury: Boolean
+    hasInjury: Boolean,
+    colorHitRegion: Color,
+    colorSelected: Color,
+    colorSelectedRing: Color,
+    colorInjuryDot: Color,
+    colorInjuryDotBorder: Color
 ) {
     val cx = pos.x * w
     val cy = pos.y * h
@@ -264,12 +281,12 @@ private fun DrawScope.drawBodyPartRegion(
 
     if (isSelected) {
         // Outer ring
-        drawCircle(ColorSelectedRing, hitR * 1.5f, Offset(cx, cy))
+        drawCircle(colorSelectedRing, hitR * 1.5f, Offset(cx, cy))
         // Filled circle
-        drawCircle(ColorSelected.copy(alpha = 0.35f), hitR, Offset(cx, cy))
-        drawCircle(ColorSelected, hitR, Offset(cx, cy), style = Stroke(2.dp.toPx()))
+        drawCircle(colorSelected.copy(alpha = 0.35f), hitR, Offset(cx, cy))
+        drawCircle(colorSelected, hitR, Offset(cx, cy), style = Stroke(2.dp.toPx()))
     } else {
-        drawCircle(ColorHitRegion, hitR, Offset(cx, cy))
+        drawCircle(colorHitRegion, hitR, Offset(cx, cy))
     }
 
     // Injury indicator dot (top-right of hit circle)
@@ -277,8 +294,8 @@ private fun DrawScope.drawBodyPartRegion(
         val dotR = INDICATOR_RADIUS_NORM * w
         val dotCx = cx + hitR * 0.65f
         val dotCy = cy - hitR * 0.65f
-        drawCircle(ColorInjuryDotBorder, dotR + 1.5.dp.toPx(), Offset(dotCx, dotCy))
-        drawCircle(ColorInjuryDot, dotR, Offset(dotCx, dotCy))
+        drawCircle(colorInjuryDotBorder, dotR + 1.5.dp.toPx(), Offset(dotCx, dotCy))
+        drawCircle(colorInjuryDot, dotR, Offset(dotCx, dotCy))
     }
 }
 

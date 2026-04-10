@@ -7,10 +7,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.AccessibilityNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -110,7 +110,7 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                        icon = { Icon(Icons.Default.Home, contentDescription = "홈") },
                         label = { Text("홈") }
                     )
                     NavigationBarItem(
@@ -122,7 +122,7 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Favorite, contentDescription = null) },
+                        icon = { Icon(Icons.Outlined.AccessibilityNew, contentDescription = "바디맵") },
                         label = { Text("바디맵") }
                     )
                     NavigationBarItem(
@@ -134,7 +134,7 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        icon = { Icon(Icons.Default.Person, contentDescription = "내 정보") },
                         label = { Text("내 정보") }
                     )
                     NavigationBarItem(
@@ -146,7 +146,7 @@ fun AppNavGraph(navController: NavHostController) {
                                 restoreState = true
                             }
                         },
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        icon = { Icon(Icons.Default.Settings, contentDescription = "설정") },
                         label = { Text("설정") }
                     )
                 }

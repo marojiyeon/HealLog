@@ -1,6 +1,7 @@
 package com.heallog.ui.record
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,6 +40,8 @@ import androidx.compose.material3.MaterialTheme
 import com.heallog.ui.components.VoiceInputField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -52,21 +56,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.heallog.ui.theme.HealLogSpacing
 import com.heallog.ui.theme.HealLogTheme
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
-
-// Constants
-private const val MAX_PHOTOS = 5
 
 // ---------------------------------------------------------------------------
 // Screen — wires ViewModel, side effects, activity-level launchers
@@ -78,6 +79,7 @@ fun RecordInjuryScreen(
     viewModel: RecordInjuryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val hasUnsavedData = remember(uiState) { viewModel.hasUnsavedChanges() }
 
     // Navigate back after a successful save
     LaunchedEffect(Unit) {
@@ -91,6 +93,7 @@ fun RecordInjuryScreen(
 
     RecordInjuryContent(
         uiState = uiState,
+        hasUnsavedData = hasUnsavedData,
         onNavigateBack = onNavigateBack,
         onTitleChange = viewModel::updateTitle,
         onDescriptionChange = viewModel::updateDescription,
@@ -102,6 +105,7 @@ fun RecordInjuryScreen(
             )
         },
         onRemovePhoto = viewModel::removePhoto,
+        onClearPhotoError = viewModel::clearPhotoError,
         onSave = viewModel::saveInjury
     )
 }
@@ -114,6 +118,7 @@ fun RecordInjuryScreen(
 @Composable
 private fun RecordInjuryContent(
     uiState: RecordInjuryUiState,
+    hasUnsavedData: Boolean,
     onNavigateBack: () -> Unit,
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -121,11 +126,44 @@ private fun RecordInjuryContent(
     onDateChange: (LocalDate) -> Unit,
     onAddPhoto: () -> Unit,
     onRemovePhoto: (Uri) -> Unit,
+    onClearPhotoError: () -> Unit,
     onSave: () -> Unit
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    BackHandler(enabled = hasUnsavedData) {
+        showExitDialog = true
+    }
+
+    LaunchedEffect(uiState.photoError) {
+        uiState.photoError?.let {
+            snackbarHostState.showSnackbar(it)
+            onClearPhotoError()
+        }
+    }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("작성을 중단할까요?") },
+            text = { Text("입력한 내용이 저장되지 않습니다.") },
+            confirmButton = {
+                TextButton(onClick = { onNavigateBack(); showExitDialog = false }) {
+                    Text("나가기")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("계속 작성")
+                }
+            }
+        )
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -135,7 +173,7 @@ private fun RecordInjuryContent(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { if (hasUnsavedData) showExitDialog = true else onNavigateBack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "뒤로"
@@ -150,7 +188,7 @@ private fun RecordInjuryContent(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(HealLogSpacing.ItemSpacing)
         ) {
             item { Spacer(Modifier.height(4.dp)) }
 
@@ -480,7 +518,7 @@ private fun PhotoThumbnail(uri: Uri, onRemove: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.08f))
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.08f))
         )
         IconButton(
             onClick = onRemove,
@@ -491,13 +529,13 @@ private fun PhotoThumbnail(uri: Uri, onRemove: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(20.dp)
-                    .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Close,
                     contentDescription = "사진 삭제",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.size(14.dp)
                 )
             }
@@ -549,6 +587,7 @@ private fun RecordInjuryScreenPreview_Empty() {
                 bodyPartId = "left_knee",
                 bodyPartNameKo = "왼쪽 무릎"
             ),
+            hasUnsavedData = false,
             onNavigateBack = {},
             onTitleChange = {},
             onDescriptionChange = {},
@@ -556,6 +595,7 @@ private fun RecordInjuryScreenPreview_Empty() {
             onDateChange = {},
             onAddPhoto = {},
             onRemovePhoto = {},
+            onClearPhotoError = {},
             onSave = {}
         )
     }
@@ -572,6 +612,7 @@ private fun RecordInjuryScreenPreview_WithErrors() {
                 titleError = true,
                 painLevelError = true
             ),
+            hasUnsavedData = false,
             onNavigateBack = {},
             onTitleChange = {},
             onDescriptionChange = {},
@@ -579,6 +620,7 @@ private fun RecordInjuryScreenPreview_WithErrors() {
             onDateChange = {},
             onAddPhoto = {},
             onRemovePhoto = {},
+            onClearPhotoError = {},
             onSave = {}
         )
     }
@@ -598,6 +640,7 @@ private fun RecordInjuryScreenPreview_Filled() {
                 isPainLevelTouched = true,
                 occurredDate = LocalDate.of(2026, 4, 10)
             ),
+            hasUnsavedData = true,
             onNavigateBack = {},
             onTitleChange = {},
             onDescriptionChange = {},
@@ -605,6 +648,7 @@ private fun RecordInjuryScreenPreview_Filled() {
             onDateChange = {},
             onAddPhoto = {},
             onRemovePhoto = {},
+            onClearPhotoError = {},
             onSave = {}
         )
     }

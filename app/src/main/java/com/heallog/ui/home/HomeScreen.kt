@@ -32,6 +32,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,11 +44,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,7 @@ import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.model.InjuryStatus
 import com.heallog.ui.components.VoiceCommandFab
+import com.heallog.ui.theme.HealLogSpacing
 import com.heallog.ui.theme.HealLogTheme
 import com.heallog.util.EmojiMapper
 import java.time.LocalDate
@@ -94,8 +98,11 @@ private fun HomeContent(
     onNavigateToNotificationSettings: () -> Unit = {}
 ) {
     val injuryCount = if (uiState is HomeUiState.Success) uiState.activeItems.size else 0
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("HealLog", fontWeight = FontWeight.Bold) },
@@ -137,11 +144,14 @@ private fun HomeContent(
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(HealLogSpacing.ItemSpacing)
             ) {
                 if (voiceFabEnabled) {
                     VoiceCommandFab(
-                        onNavigateToBodyMap = onNavigateToBodyMap
+                        onNavigateToBodyMap = onNavigateToBodyMap,
+                        onShowMessage = { msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
                     )
                 }
                 SmallFloatingActionButton(onClick = onNavigateToBodyMap) {
@@ -204,7 +214,7 @@ private fun EmptyContent(
             )
             Text("🩺", fontSize = 36.sp)
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(HealLogSpacing.LargeSpacing))
         Text(
             text = "부상 기록이 없어요",
             style = MaterialTheme.typography.titleLarge,
@@ -245,8 +255,8 @@ private fun InjuryListContent(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(HealLogSpacing.ContentPadding),
+        verticalArrangement = Arrangement.spacedBy(HealLogSpacing.ItemSpacing)
     ) {
         if (activeItems.isEmpty() && healedItems.isNotEmpty()) {
             item {
@@ -373,9 +383,9 @@ private fun InjuryCard(
 private fun PainLevelBar(painLevel: Int, modifier: Modifier = Modifier) {
     val fraction = painLevel / 10f
     val barColor = when {
-        painLevel <= 3 -> Color(0xFF4CAF50)
-        painLevel <= 6 -> Color(0xFFFFC107)
-        else -> Color(0xFFF44336)
+        painLevel <= 3 -> MaterialTheme.colorScheme.tertiary
+        painLevel <= 6 -> MaterialTheme.colorScheme.secondary
+        else           -> MaterialTheme.colorScheme.error
     }
 
     Box(

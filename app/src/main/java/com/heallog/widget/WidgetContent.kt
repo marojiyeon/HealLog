@@ -28,7 +28,7 @@ import androidx.glance.text.TextStyle
 @Composable
 fun InjuryRow(
     injury: WidgetInjury,
-    onClick: () -> Unit,
+    onClick: Intent,
     modifier: GlanceModifier = GlanceModifier,
     showPainBar: Boolean = false
 ) {
