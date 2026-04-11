@@ -1,5 +1,6 @@
 package com.heallog.ui.detail
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.heallog.MainDispatcherRule
@@ -13,6 +14,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -150,6 +152,37 @@ class InjuryDetailViewModelTest {
         }
 
         coVerify(exactly = 1) { repository.deleteInjury(testInjury) }
+    }
+
+    @Test
+    fun `updatePainLog calls repository updateLog with updated fields`() = runTest {
+        coEvery { repository.updateLog(any()) } returns Unit
+
+        viewModel.updatePainLog(testLog, painLevel = 8, note = "많이 나아짐", photoUris = emptyList())
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            repository.updateLog(match { it.painLevel == 8 && it.note == "많이 나아짐" })
+        }
+    }
+
+    @Test
+    fun `deletePainLog calls repository deleteLog`() = runTest {
+        coEvery { repository.deleteLog(testLog) } returns Unit
+
+        viewModel.deletePainLog(testLog)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.deleteLog(testLog) }
+    }
+
+    @Test
+    fun `addLogPhoto ignores fourth photo`() {
+        val uris = (1..4).map { mockk<Uri>() }
+        uris.forEach { viewModel.addLogPhoto(it) }
+
+        val formState = viewModel.uiState.value.newLogForm
+        assertEquals(3, formState.photoUris.size)
     }
 
     @Test

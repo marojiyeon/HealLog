@@ -35,7 +35,9 @@ import com.heallog.ui.home.HomeScreen
 import com.heallog.ui.profile.EditProfileScreen
 import com.heallog.ui.profile.ProfileScreen
 import com.heallog.ui.record.RecordInjuryScreen
+import com.heallog.ui.settings.DataExportScreen
 import com.heallog.ui.settings.NotificationSettingsScreen
+import com.heallog.ui.settings.PrivacyPolicyScreen
 import com.heallog.ui.settings.SettingsScreen
 import com.heallog.ui.settings.ThemeSettingsScreen
 import kotlinx.serialization.Serializable
@@ -69,6 +71,12 @@ sealed interface Screen {
 
     @Serializable
     data object NotificationSettings : Screen
+
+    @Serializable
+    data object DataExport : Screen
+
+    @Serializable
+    data object PrivacyPolicy : Screen
 
     @Serializable
     data class AddVisit(val injuryId: Long, val visitId: Long = -1L) : Screen
@@ -178,13 +186,6 @@ fun AppNavGraph(navController: NavHostController) {
                     onNavigateToDetail = { injuryId ->
                         navController.navigate(Screen.InjuryDetail(injuryId))
                     },
-                    onNavigateToSettings = {
-                        navController.navigate(Screen.Settings) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
                     onNavigateToNotificationSettings = {
                         navController.navigate(Screen.NotificationSettings)
                     }
@@ -216,6 +217,9 @@ fun AppNavGraph(navController: NavHostController) {
             composable<Screen.Settings> {
                 SettingsScreen(
                     onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings) },
+                    onNavigateToNotificationSettings = { navController.navigate(Screen.NotificationSettings) },
+                    onNavigateToDataExport = { navController.navigate(Screen.DataExport) },
+                    onNavigateToPrivacyPolicy = { navController.navigate(Screen.PrivacyPolicy) },
                     onBack = { navController.navigateUp() }
                 )
             }
@@ -247,8 +251,14 @@ fun AppNavGraph(navController: NavHostController) {
                     onNavigateToAddVisit = { injuryId ->
                         navController.navigate(Screen.AddVisit(injuryId))
                     },
+                    onNavigateToEditVisit = { injuryId, visitId ->
+                        navController.navigate(Screen.AddVisit(injuryId, visitId))
+                    },
                     onNavigateToAddMedication = { injuryId ->
                         navController.navigate(Screen.AddMedication(injuryId))
+                    },
+                    onNavigateToEditMedication = { injuryId, medicationId ->
+                        navController.navigate(Screen.AddMedication(injuryId, medicationId))
                     }
                 )
             }
@@ -257,6 +267,14 @@ fun AppNavGraph(navController: NavHostController) {
                 NotificationSettingsScreen(
                     onNavigateBack = { navController.navigateUp() }
                 )
+            }
+
+            composable<Screen.DataExport> {
+                DataExportScreen(onBack = { navController.navigateUp() })
+            }
+
+            composable<Screen.PrivacyPolicy> {
+                PrivacyPolicyScreen(onBack = { navController.navigateUp() })
             }
 
             composable<Screen.AddVisit> { backStackEntry ->

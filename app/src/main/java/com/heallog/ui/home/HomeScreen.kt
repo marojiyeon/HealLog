@@ -18,12 +18,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,7 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +49,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -73,7 +76,6 @@ import java.time.temporal.ChronoUnit
 fun HomeScreen(
     onNavigateToBodyMap: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
-    onNavigateToSettings: () -> Unit = {},
     onNavigateToNotificationSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -84,7 +86,6 @@ fun HomeScreen(
         voiceFabEnabled = voiceFabEnabled,
         onNavigateToBodyMap = onNavigateToBodyMap,
         onNavigateToDetail = onNavigateToDetail,
-        onNavigateToSettings = onNavigateToSettings,
         onNavigateToNotificationSettings = onNavigateToNotificationSettings
     )
 }
@@ -96,46 +97,92 @@ private fun HomeContent(
     voiceFabEnabled: Boolean,
     onNavigateToBodyMap: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
-    onNavigateToSettings: () -> Unit = {},
     onNavigateToNotificationSettings: () -> Unit = {}
 ) {
-    val injuryCount = if (uiState is HomeUiState.Success) uiState.activeItems.size else 0
+    var searchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(searchActive) {
+        if (searchActive) focusRequester.requestFocus()
+    }
+
+    val displayedUiState = if (searchActive && searchQuery.isNotBlank() && uiState is HomeUiState.Success) {
+        val q = searchQuery.trim().lowercase()
+        HomeUiState.Success(
+            activeItems = uiState.activeItems.filter {
+                it.injury.title.lowercase().contains(q) || it.injury.bodyPart.lowercase().contains(q)
+            },
+            healedItems = uiState.healedItems.filter {
+                it.injury.title.lowercase().contains(q) || it.injury.bodyPart.lowercase().contains(q)
+            }
+        )
+    } else uiState
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("HealLog", fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = onNavigateToNotificationSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = stringResource(R.string.cd_notification_settings),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.cd_settings),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    BadgedBox(
-                        badge = {
-                            if (injuryCount > 0) {
-                                Badge { Text(injuryCount.toString()) }
+                title = {
+                    if (searchActive) {
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(focusRequester),
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = MaterialTheme.typography.titleMedium.fontSize
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            decorationBox = { innerTextField ->
+                                Box {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            "부상 이름 검색...",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    innerTextField()
+                                }
                             }
-                        },
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = stringResource(R.string.cd_injury_count),
-                            tint = MaterialTheme.colorScheme.onSurface
                         )
+                    } else {
+                        Text("HealLog", fontWeight = FontWeight.Bold)
+                    }
+                },
+                actions = {
+                    if (searchActive) {
+                        IconButton(onClick = {
+                            searchActive = false
+                            searchQuery = ""
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "검색 닫기",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "검색",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        IconButton(onClick = onNavigateToNotificationSettings) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = stringResource(R.string.cd_notification_settings),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -162,20 +209,35 @@ private fun HomeContent(
             }
         }
     ) { innerPadding ->
-        when (uiState) {
+        when (val state = displayedUiState) {
             is HomeUiState.Loading -> LoadingContent(Modifier.padding(innerPadding))
             is HomeUiState.Empty -> EmptyContent(
                 onNavigateToBodyMap = onNavigateToBodyMap,
                 modifier = Modifier.padding(innerPadding)
             )
-            is HomeUiState.Success -> InjuryListContent(
-                activeItems = uiState.activeItems,
-                healedItems = uiState.healedItems,
-                onNavigateToDetail = onNavigateToDetail,
-                modifier = Modifier.padding(innerPadding)
-            )
+            is HomeUiState.Success -> {
+                if (searchActive && searchQuery.isNotBlank() && state.activeItems.isEmpty() && state.healedItems.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "\"$searchQuery\" 검색 결과가 없습니다",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    InjuryListContent(
+                        activeItems = state.activeItems,
+                        healedItems = state.healedItems,
+                        onNavigateToDetail = onNavigateToDetail,
+                        modifier = Modifier.padding(innerPadding)
+                    )
+                }
+            }
             is HomeUiState.Error -> ErrorContent(
-                message = uiState.message,
+                message = state.message,
                 modifier = Modifier.padding(innerPadding)
             )
         }
@@ -448,8 +510,7 @@ private fun HomeLoadingPreview() {
             uiState = HomeUiState.Loading,
             voiceFabEnabled = false,
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {},
-            onNavigateToSettings = {}
+            onNavigateToDetail = {}
         )
     }
 }
@@ -462,8 +523,7 @@ private fun HomeEmptyPreview() {
             uiState = HomeUiState.Empty,
             voiceFabEnabled = false,
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {},
-            onNavigateToSettings = {}
+            onNavigateToDetail = {}
         )
     }
 }
@@ -493,8 +553,7 @@ private fun HomeSuccessPreview() {
             ),
             voiceFabEnabled = false,
             onNavigateToBodyMap = {},
-            onNavigateToDetail = {},
-            onNavigateToSettings = {}
+            onNavigateToDetail = {}
         )
     }
 }

@@ -49,7 +49,8 @@ class InjuryRepositoryTest {
     fun setUp() {
         injuryDao = mockk()
         painLogDao = mockk()
-        widgetUpdateManager = mockk(relaxed = true)
+        widgetUpdateManager = mockk(relaxed = false)
+        coEvery { widgetUpdateManager.updateAllWidgets() } returns Unit
         repository = InjuryRepository(injuryDao, painLogDao, widgetUpdateManager)
     }
 
@@ -93,6 +94,7 @@ class InjuryRepositoryTest {
 
         assertEquals(42L, result)
         coVerify(exactly = 1) { injuryDao.insertInjury(testInjury) }
+        coVerify(exactly = 1) { widgetUpdateManager.updateAllWidgets() }
     }
 
     @Test
@@ -103,6 +105,7 @@ class InjuryRepositoryTest {
         repository.updateInjury(updated)
 
         coVerify(exactly = 1) { injuryDao.updateInjury(updated) }
+        coVerify(exactly = 1) { widgetUpdateManager.updateAllWidgets() }
     }
 
     @Test
@@ -112,6 +115,7 @@ class InjuryRepositoryTest {
         repository.deleteInjury(testInjury)
 
         coVerify(exactly = 1) { injuryDao.deleteInjury(testInjury) }
+        coVerify(exactly = 1) { widgetUpdateManager.updateAllWidgets() }
     }
 
     @Test
@@ -142,5 +146,26 @@ class InjuryRepositoryTest {
 
         assertEquals(10L, result)
         coVerify(exactly = 1) { painLogDao.insertLog(testLog) }
+        coVerify(exactly = 1) { widgetUpdateManager.updateAllWidgets() }
+    }
+
+    @Test
+    fun `updateLog delegates to painLogDao and triggers widget update`() = runTest {
+        coEvery { painLogDao.updateLog(testLog) } returns Unit
+
+        repository.updateLog(testLog)
+
+        coVerify(exactly = 1) { painLogDao.updateLog(testLog) }
+        coVerify(exactly = 1) { widgetUpdateManager.updateAllWidgets() }
+    }
+
+    @Test
+    fun `deleteLog delegates to painLogDao and triggers widget update`() = runTest {
+        coEvery { painLogDao.deleteLog(testLog) } returns Unit
+
+        repository.deleteLog(testLog)
+
+        coVerify(exactly = 1) { painLogDao.deleteLog(testLog) }
+        coVerify(exactly = 1) { widgetUpdateManager.updateAllWidgets() }
     }
 }

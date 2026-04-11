@@ -124,6 +124,25 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun `uiState emits Error when getLatestLog throws exception`() = runTest {
+        every { repository.getAllInjuries() } returns flowOf(listOf(testInjury))
+        every { repository.getLatestLog(1L) } returns flow { throw RuntimeException("DB 오류") }
+        viewModel = HomeViewModel(repository, voicePreferences)
+
+        viewModel.uiState.test {
+            var found = false
+            for (i in 0 until 5) {
+                when (val item = awaitItem()) {
+                    is HomeUiState.Error -> { found = true; break }
+                    else -> {}
+                }
+            }
+            assertTrue("Expected Error state but never received it", found)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `error emitted by repository flow produces Error state`() = runTest {
         every { repository.getAllInjuries() } returns flow { throw RuntimeException("DB 오류") }
         viewModel = HomeViewModel(repository, voicePreferences)

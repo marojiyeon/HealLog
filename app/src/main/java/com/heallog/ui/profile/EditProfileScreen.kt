@@ -36,11 +36,21 @@ fun EditProfileScreen(
 
     var editingProfile by remember { mutableStateOf(UserProfile()) }
     var isInitialized by rememberSaveable { mutableStateOf(false) }
+    var heightText by rememberSaveable { mutableStateOf("") }
+    var weightText by rememberSaveable { mutableStateOf("") }
 
     // Initialize local state once from DataStore
     LaunchedEffect(profile) {
         if (!isInitialized) {
             editingProfile = profile
+            heightText = if (profile.heightCm == 0f) "" else {
+                val h = profile.heightCm
+                if (h == h.toInt().toFloat()) h.toInt().toString() else h.toString()
+            }
+            weightText = if (profile.weightKg == 0f) "" else {
+                val w = profile.weightKg
+                if (w == w.toInt().toFloat()) w.toInt().toString() else w.toString()
+            }
             isInitialized = true
         }
     }
@@ -159,28 +169,33 @@ fun EditProfileScreen(
             // Height & Weight
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    value = if (editingProfile.heightCm == 0f) "" else editingProfile.heightCm.toInt().toString(),
+                    value = heightText,
                     onValueChange = { raw ->
-                        val v = raw.toIntOrNull()
-                        if (v != null || raw.isEmpty()) {
-                            editingProfile = editingProfile.copy(heightCm = v?.toFloat() ?: 0f)
+                        val filtered = raw.filter { it.isDigit() || it == '.' }
+                        heightText = filtered
+                        val v = filtered.toFloatOrNull()
+                        if (v != null) {
+                            editingProfile = editingProfile.copy(heightCm = v)
+                        } else if (filtered.isEmpty()) {
+                            editingProfile = editingProfile.copy(heightCm = 0f)
                         }
                     },
                     label = { Text("키") },
                     suffix = { Text("cm") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(
-                    value = if (editingProfile.weightKg == 0f) "" else {
-                        val w = editingProfile.weightKg
-                        if (w == w.toInt().toFloat()) w.toInt().toString() else w.toString()
-                    },
+                    value = weightText,
                     onValueChange = { raw ->
-                        val v = raw.toFloatOrNull()
-                        if (v != null || raw.isEmpty()) {
-                            editingProfile = editingProfile.copy(weightKg = v ?: 0f)
+                        val filtered = raw.filter { it.isDigit() || it == '.' }
+                        weightText = filtered
+                        val v = filtered.toFloatOrNull()
+                        if (v != null) {
+                            editingProfile = editingProfile.copy(weightKg = v)
+                        } else if (filtered.isEmpty()) {
+                            editingProfile = editingProfile.copy(weightKg = 0f)
                         }
                     },
                     label = { Text("몸무게") },

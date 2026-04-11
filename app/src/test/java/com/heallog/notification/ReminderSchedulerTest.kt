@@ -118,6 +118,46 @@ class ReminderSchedulerTest {
         verify { workManager.cancelUniqueWork(match { it.contains("8") }) }
     }
 
+    // --- Edge cases ---
+
+    @Test
+    fun `scheduleReminder enqueues for next day when all today times are past`() {
+        val pastTime1 = LocalTime.now().minusHours(2).format(DateTimeFormatter.ofPattern("HH:mm"))
+        val pastTime2 = LocalTime.now().minusHours(1).format(DateTimeFormatter.ofPattern("HH:mm"))
+        val setting = buildSetting(
+            id = 10L,
+            isEnabled = true,
+            times = "[\"$pastTime1\",\"$pastTime2\"]",
+            repeatDays = "[]"
+        )
+
+        scheduler.scheduleReminder(setting)
+
+        verify {
+            workManager.enqueueUniqueWork(
+                match { it.contains("10") },
+                any(),
+                any<OneTimeWorkRequest>()
+            )
+        }
+    }
+
+    @Test
+    fun `scheduleReminder with empty repeatDays schedules for any day`() {
+        val futureTime = LocalTime.now().plusHours(2).format(DateTimeFormatter.ofPattern("HH:mm"))
+        val setting = buildSetting(
+            id = 20L,
+            isEnabled = true,
+            times = "[\"$futureTime\"]",
+            repeatDays = "[]"
+        )
+
+        scheduler.scheduleReminder(setting)
+
+        verify { workManager.enqueueUniqueWork(any(), any(), any<OneTimeWorkRequest>()) }
+        verify(exactly = 0) { workManager.cancelUniqueWork(match { it.contains("20") }) }
+    }
+
     // --- Helpers ---
 
     private fun buildSetting(

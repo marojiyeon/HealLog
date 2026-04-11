@@ -1,21 +1,29 @@
 package com.heallog.ui.record
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.heallog.MainDispatcherRule
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.repository.InjuryRepository
+import com.heallog.model.InjuryStatus
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.LocalDate
+import java.time.LocalDateTime
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordInjuryViewModelTest {
@@ -130,5 +138,69 @@ class RecordInjuryViewModelTest {
         // No title, no pain level
         viewModel.saveInjury()
         coVerify(exactly = 0) { repository.insertInjury(any()) }
+    }
+
+    @Test
+    fun `saveInjury in edit mode calls updateInjury not insertInjury`() = runTest {
+        val testInjury = Injury(
+            id = 42L,
+            bodyPart = "left_knee",
+            title = "무릎 부상",
+            description = "",
+            painLevel = 6,
+            occurredAt = LocalDate.now(),
+            createdAt = LocalDateTime.now(),
+            status = InjuryStatus.ACTIVE
+        )
+        val editSavedStateHandle = SavedStateHandle(
+            mapOf("bodyPartId" to "left_knee", "injuryId" to 42L)
+        )
+        every { repository.getInjuryById(42L) } returns flowOf(testInjury)
+        coEvery { repository.updateInjury(any()) } returns Unit
+
+        val editViewModel = RecordInjuryViewModel(editSavedStateHandle, repository)
+        advanceUntilIdle()
+
+        editViewModel.updatePainLevel(8)
+        editViewModel.saveInjury()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.updateInjury(any()) }
+        coVerify(exactly = 0) { repository.insertInjury(any()) }
+    }
+
+    @Test
+    fun `addPhoto rejects fourth photo and sets photoError`() {
+        val uris = (1..4).map { mockk<Uri>() }
+        uris.forEach { viewModel.addPhoto(it) }
+
+        assertEquals(3, viewModel.uiState.value.photoUris.size)
+        assertNotNull(viewModel.uiState.value.photoError)
+    }
+
+    @Test
+    fun `hasUnsavedChanges returns true after date change in edit mode`() = runTest {
+        val testInjury = Injury(
+            id = 42L,
+            bodyPart = "left_knee",
+            title = "무릎 부상",
+            description = "",
+            painLevel = 6,
+            occurredAt = LocalDate.now(),
+            createdAt = LocalDateTime.now(),
+            status = InjuryStatus.ACTIVE
+        )
+        val editSavedStateHandle = SavedStateHandle(
+            mapOf("bodyPartId" to "left_knee", "injuryId" to 42L)
+        )
+        every { repository.getInjuryById(42L) } returns flowOf(testInjury)
+
+        val editViewModel = RecordInjuryViewModel(editSavedStateHandle, repository)
+        advanceUntilIdle()
+
+        val originalDate = editViewModel.uiState.value.occurredDate
+        editViewModel.updateDate(originalDate.plusDays(1))
+
+        assertTrue(editViewModel.hasUnsavedChanges())
     }
 }

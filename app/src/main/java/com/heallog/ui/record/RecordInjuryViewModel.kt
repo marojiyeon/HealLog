@@ -138,7 +138,8 @@ class RecordInjuryViewModel @Inject constructor(
             current.title != original.title ||
             current.description != original.description ||
             current.painLevel != original.painLevel ||
-            current.photoUris != original.photoUris
+            current.photoUris != original.photoUris ||
+            current.occurredDate != original.occurredDate
         } else {
             current.title.isNotBlank() ||
             current.description.isNotBlank() ||
