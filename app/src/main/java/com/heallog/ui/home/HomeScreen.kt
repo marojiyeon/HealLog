@@ -333,10 +333,15 @@ private fun InjuryListContent(
     ) {
         dashboardStats?.let { stats ->
             item(key = "dashboard_stats") {
-                DashboardStatsSection(
-                    stats = stats,
-                    onNavigateToDetail = onNavigateToDetail
-                )
+                DashboardStatsSection(stats = stats)
+            }
+            if (stats.activeRecoveryList.isNotEmpty()) {
+                items(stats.activeRecoveryList, key = { "recovery_${it.injuryId}" }) { recoveryStats ->
+                    RecoveryMiniCard(
+                        stats = recoveryStats,
+                        onClick = { onNavigateToDetail(recoveryStats.injuryId) }
+                    )
+                }
             }
         }
 
@@ -394,7 +399,6 @@ private fun InjuryListContent(
 @Composable
 private fun DashboardStatsSection(
     stats: DashboardStats,
-    onNavigateToDetail: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -428,13 +432,6 @@ private fun DashboardStatsSection(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(vertical = 4.dp)
             )
-            stats.activeRecoveryList.forEach { recoveryStats ->
-                RecoveryMiniCard(
-                    stats = recoveryStats,
-                    onClick = { onNavigateToDetail(recoveryStats.injuryId) }
-                )
-                Spacer(Modifier.height(4.dp))
-            }
         }
     }
 }

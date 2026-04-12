@@ -8,6 +8,7 @@ import com.heallog.model.ChartPeriod
 import com.heallog.model.DashboardStats
 import com.heallog.model.PainChartPoint
 import com.heallog.model.RecoveryStats
+import com.heallog.model.InjuryStatus
 import com.heallog.model.RecoveryTrend
 import com.heallog.widget.WidgetUpdateManager
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,6 +33,8 @@ class InjuryRepository @Inject constructor(
     private val painLogDao: PainLogDao,
     private val widgetUpdateManager: WidgetUpdateManager
 ) {
+
+    private val systemZone: ZoneId = ZoneId.systemDefault()
 
     // --- Injury ---
 
@@ -117,18 +121,29 @@ class InjuryRepository @Inject constructor(
             }
         }
 
+    private fun getActiveRecoveryStatsOptimized(): Flow<List<RecoveryStats>> =
+        combine(
+            injuryDao.getAllActiveInjuries(),
+            painLogDao.getLogsForActiveInjuries()
+        ) { injuries, allLogs ->
+            val logsByInjury = allLogs.groupBy { it.injuryId }
+            injuries.map { injury ->
+                computeRecoveryStats(injury, logsByInjury[injury.id].orEmpty())
+            }
+        }
+
     fun getDashboardStats(): Flow<DashboardStats> =
         combine(
             injuryDao.getAllInjuries(),
-            getAllActiveRecoveryStats()
+            getActiveRecoveryStatsOptimized()
         ) { injuries, activeRecoveryList ->
-            val active = injuries.filter { it.status.name != "HEALED" }
-            val healed = injuries.filter { it.status.name == "HEALED" }
+            val active = injuries.filter { it.status != InjuryStatus.HEALED }
+            val healed = injuries.filter { it.status == InjuryStatus.HEALED }
             val avgRecovery = if (healed.isNotEmpty()) {
                 healed.map { injury ->
                     ChronoUnit.DAYS.between(
                         injury.occurredAt,
-                        injury.updatedAt?.toLocalDate() ?: LocalDate.now()
+                        injury.updatedAt?.toLocalDate() ?: LocalDate.now(systemZone)
                     ).toFloat()
                 }.average().toFloat()
             } else null
@@ -146,8 +161,8 @@ class InjuryRepository @Inject constructor(
         }
 
     private fun periodCutoff(period: ChartPeriod): LocalDateTime? = when (period) {
-        ChartPeriod.WEEK -> LocalDateTime.now().minusDays(7)
-        ChartPeriod.MONTH -> LocalDateTime.now().minusDays(30)
+        ChartPeriod.WEEK -> LocalDateTime.now(systemZone).minusDays(7)
+        ChartPeriod.MONTH -> LocalDateTime.now(systemZone).minusDays(30)
         ChartPeriod.ALL -> null
     }
 
@@ -157,7 +172,7 @@ class InjuryRepository @Inject constructor(
         val rate = if (initial > 0) {
             ((initial - current) / initial.toFloat() * 100f).coerceIn(0f, 100f)
         } else 0f
-        val daysSince = ChronoUnit.DAYS.between(injury.occurredAt, LocalDate.now()).toInt()
+        val daysSince = ChronoUnit.DAYS.between(injury.occurredAt, LocalDate.now(systemZone)).toInt()
         val trend = determineTrend(logs)
         val estimated = estimateRecoveryDays(injury, logs)
         return RecoveryStats(
@@ -175,7 +190,7 @@ class InjuryRepository @Inject constructor(
 
     private fun determineTrend(logs: List<PainLog>): RecoveryTrend {
         if (logs.size < 3) return RecoveryTrend.STABLE
-        val now = LocalDateTime.now()
+        val now = LocalDateTime.now(systemZone)
         val recentCutoff = now.minusDays(7)
         val prevCutoff = now.minusDays(14)
         val recent = logs.filter { it.loggedAt >= recentCutoff }.map { it.painLevel }
@@ -195,7 +210,7 @@ class InjuryRepository @Inject constructor(
         val initial = injury.painLevel.toFloat()
         val current = logs.last().painLevel.toFloat()
         if (current <= 0f) return 0
-        val daysSince = ChronoUnit.DAYS.between(injury.occurredAt, LocalDate.now()).toFloat()
+        val daysSince = ChronoUnit.DAYS.between(injury.occurredAt, LocalDate.now(systemZone)).toFloat()
         if (daysSince <= 0f) return null
         val dailyReduction = (initial - current) / daysSince
         if (dailyReduction <= 0f) return null

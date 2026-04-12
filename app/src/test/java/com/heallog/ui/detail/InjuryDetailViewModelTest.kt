@@ -7,7 +7,10 @@ import com.heallog.MainDispatcherRule
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.data.repository.InjuryRepository
+import com.heallog.model.ChartPeriod
 import com.heallog.model.InjuryStatus
+import com.heallog.model.RecoveryStats
+import com.heallog.model.RecoveryTrend
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -58,6 +61,14 @@ class InjuryDetailViewModelTest {
         repository = mockk()
         every { repository.getInjuryById(1L) } returns flowOf(testInjury)
         every { repository.getLogsForInjury(1L) } returns flowOf(listOf(testLog))
+        every { repository.getPainChartData(1L, any()) } returns flowOf(emptyList())
+        every { repository.getRecoveryStats(1L) } returns flowOf(
+            RecoveryStats(
+                injuryId = 1L, injuryTitle = "", bodyPart = "",
+                initialPainLevel = 7, currentPainLevel = 5, recoveryRate = 28f,
+                daysSinceInjury = 10, estimatedRecoveryDays = null, trend = RecoveryTrend.STABLE
+            )
+        )
         val savedStateHandle = SavedStateHandle(mapOf("injuryId" to 1L))
         viewModel = InjuryDetailViewModel(savedStateHandle, repository)
     }
@@ -190,6 +201,7 @@ class InjuryDetailViewModelTest {
         val older = PainLog(id = 2L, injuryId = 1L, painLevel = 7, note = "", loggedAt = LocalDateTime.now().minusDays(5))
         val newer = PainLog(id = 3L, injuryId = 1L, painLevel = 4, note = "", loggedAt = LocalDateTime.now())
         every { repository.getLogsForInjury(1L) } returns flowOf(listOf(older, newer))
+        // getPainChartData and getRecoveryStats already stubbed in setUp
 
         val savedStateHandle = SavedStateHandle(mapOf("injuryId" to 1L))
         val vm = InjuryDetailViewModel(savedStateHandle, repository)

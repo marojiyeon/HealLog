@@ -21,8 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -39,18 +39,20 @@ fun RecoveryProgressRing(
     strokeWidth: Dp = 8.dp
 ) {
     val rate = stats.recoveryRate / 100f
-    val ringColor = recoveryRingColor(rate)
-    val a11yDesc = "회복률 ${stats.recoveryRate.toInt()}%, ${stats.trend.label}, 경과 ${stats.daysSinceInjury}일"
+    val clampedRate = rate.coerceIn(0f, 1f)
+    val ringColor = recoveryRingColor(clampedRate)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .semantics { contentDescription = a11yDesc },
+            .semantics(mergeDescendants = true) {
+                stateDescription = "${stats.recoveryRate.toInt()}% 회복, ${stats.trend.label}, 경과 ${stats.daysSinceInjury}일"
+            },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ProgressRingCanvas(rate = rate, color = ringColor, size = ringSize, strokeWidth = strokeWidth)
+        ProgressRingCanvas(rate = clampedRate, color = ringColor, size = ringSize, strokeWidth = strokeWidth)
 
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(

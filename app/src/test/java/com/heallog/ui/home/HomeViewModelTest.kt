@@ -6,6 +6,7 @@ import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.data.preferences.VoicePreferences
 import com.heallog.data.repository.InjuryRepository
+import com.heallog.model.DashboardStats
 import com.heallog.model.InjuryStatus
 import io.mockk.every
 import io.mockk.mockk
@@ -48,6 +49,7 @@ class HomeViewModelTest {
         repository = mockk()
         voicePreferences = mockk()
         every { voicePreferences.voiceFabEnabled } returns flowOf(false)
+        every { repository.getDashboardStats() } returns flowOf(DashboardStats(0, 0, null, null, emptyList()))
     }
 
     @Test

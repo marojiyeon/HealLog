@@ -23,6 +23,14 @@ interface PainLogDao {
     @Query("SELECT * FROM pain_logs ORDER BY loggedAt ASC")
     fun getAllPainLogs(): Flow<List<PainLog>>
 
+    @Query("""
+        SELECT p.* FROM pain_logs p
+        INNER JOIN injuries i ON p.injuryId = i.id
+        WHERE i.status != 'HEALED'
+        ORDER BY p.loggedAt ASC
+    """)
+    fun getLogsForActiveInjuries(): Flow<List<PainLog>>
+
     @Insert
     suspend fun insertLog(log: PainLog): Long
 

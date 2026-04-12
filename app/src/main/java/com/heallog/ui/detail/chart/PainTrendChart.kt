@@ -43,10 +43,12 @@ fun PainTrendChart(
     val modelProducer = remember { CartesianChartModelProducer() }
 
     LaunchedEffect(chartPoints) {
-        if (chartPoints.isNotEmpty()) {
-            modelProducer.runTransaction {
-                lineSeries {
+        modelProducer.runTransaction {
+            lineSeries {
+                if (chartPoints.isNotEmpty()) {
                     series(chartPoints.map { it.painLevel.toFloat() })
+                } else {
+                    series(emptyList<Float>())
                 }
             }
         }
