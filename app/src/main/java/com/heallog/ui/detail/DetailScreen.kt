@@ -81,7 +81,12 @@ import coil3.compose.AsyncImage
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.model.BodyParts
+import com.heallog.model.ChartPeriod
 import com.heallog.model.InjuryStatus
+import com.heallog.model.PainChartPoint
+import com.heallog.model.RecoveryStats
+import com.heallog.ui.detail.chart.PainTrendChart
+import com.heallog.ui.detail.chart.RecoveryProgressRing
 import com.heallog.ui.detail.hospital.HospitalTab
 import com.heallog.ui.theme.HealLogTheme
 import java.time.LocalDate
@@ -102,6 +107,9 @@ fun InjuryDetailScreen(
     viewModel: InjuryDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val painChartData by viewModel.painChartData.collectAsStateWithLifecycle()
+    val selectedChartPeriod by viewModel.selectedChartPeriod.collectAsStateWithLifecycle()
+    val recoveryStats by viewModel.recoveryStats.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -118,6 +126,9 @@ fun InjuryDetailScreen(
 
     InjuryDetailContent(
         uiState = uiState,
+        painChartData = painChartData,
+        selectedChartPeriod = selectedChartPeriod,
+        recoveryStats = recoveryStats,
         snackbarHostState = snackbarHostState,
         onNavigateBack = onNavigateBack,
         onToggleLogForm = viewModel::toggleLogForm,
@@ -131,6 +142,7 @@ fun InjuryDetailScreen(
         onEditInjury = viewModel::navigateToEditInjury,
         onUpdatePainLog = viewModel::updatePainLog,
         onDeletePainLog = viewModel::deletePainLog,
+        onChartPeriodChanged = viewModel::onChartPeriodChanged,
         onNavigateToAddVisit = onNavigateToAddVisit,
         onNavigateToEditVisit = onNavigateToEditVisit,
         onNavigateToAddMedication = onNavigateToAddMedication,
@@ -142,6 +154,9 @@ fun InjuryDetailScreen(
 @Composable
 private fun InjuryDetailContent(
     uiState: InjuryDetailUiState,
+    painChartData: List<PainChartPoint>,
+    selectedChartPeriod: ChartPeriod,
+    recoveryStats: RecoveryStats?,
     snackbarHostState: SnackbarHostState,
     onNavigateBack: () -> Unit,
     onToggleLogForm: () -> Unit,
@@ -155,6 +170,7 @@ private fun InjuryDetailContent(
     onEditInjury: () -> Unit,
     onUpdatePainLog: (PainLog, Int, String, List<Uri>) -> Unit,
     onDeletePainLog: (PainLog) -> Unit,
+    onChartPeriodChanged: (ChartPeriod) -> Unit,
     onNavigateToAddVisit: (Long) -> Unit = {},
     onNavigateToEditVisit: (Long, Long) -> Unit = { _, _ -> },
     onNavigateToAddMedication: (Long) -> Unit = {},
@@ -308,6 +324,9 @@ private fun InjuryDetailContent(
                     injury = uiState.injury,
                     painLogs = uiState.painLogs,
                     formState = uiState.newLogForm,
+                    painChartData = painChartData,
+                    selectedChartPeriod = selectedChartPeriod,
+                    recoveryStats = recoveryStats,
                     onToggleLogForm = onToggleLogForm,
                     onUpdateLogPainLevel = onUpdateLogPainLevel,
                     onUpdateLogNote = onUpdateLogNote,
@@ -316,6 +335,7 @@ private fun InjuryDetailContent(
                     onAddPainLog = onAddPainLog,
                     onUpdateStatus = onUpdateStatus,
                     onLongPressLog = { log -> selectedLogForMenu = log },
+                    onChartPeriodChanged = onChartPeriodChanged,
                     onNavigateToAddVisit = onNavigateToAddVisit,
                     onNavigateToEditVisit = onNavigateToEditVisit,
                     onNavigateToAddMedication = onNavigateToAddMedication,
@@ -333,6 +353,9 @@ private fun DetailBody(
     injury: Injury,
     painLogs: List<PainLog>,
     formState: NewLogFormState,
+    painChartData: List<PainChartPoint>,
+    selectedChartPeriod: ChartPeriod,
+    recoveryStats: RecoveryStats?,
     onToggleLogForm: () -> Unit,
     onUpdateLogPainLevel: (Int) -> Unit,
     onUpdateLogNote: (String) -> Unit,
@@ -341,6 +364,7 @@ private fun DetailBody(
     onAddPainLog: () -> Unit,
     onUpdateStatus: (InjuryStatus) -> Unit,
     onLongPressLog: (PainLog) -> Unit,
+    onChartPeriodChanged: (ChartPeriod) -> Unit,
     onNavigateToAddVisit: (Long) -> Unit = {},
     onNavigateToEditVisit: (Long, Long) -> Unit = { _, _ -> },
     onNavigateToAddMedication: (Long) -> Unit = {},
@@ -348,9 +372,13 @@ private fun DetailBody(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    val tabs = listOf("통증 일지", "병원 치료")
+    val tabs = listOf("통증 일지", "통증 차트", "병원 치료")
 
     Column(modifier = modifier.fillMaxSize()) {
+        recoveryStats?.let {
+            RecoveryProgressRing(stats = it)
+        }
+
         androidx.compose.material3.TabRow(selectedTabIndex = selectedTab) {
             tabs.forEachIndexed { index, title ->
                 androidx.compose.material3.Tab(
@@ -379,6 +407,14 @@ private fun DetailBody(
                 )
             }
             1 -> {
+                PainTrendChart(
+                    chartPoints = painChartData,
+                    selectedPeriod = selectedChartPeriod,
+                    onPeriodChange = onChartPeriodChanged,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            2 -> {
                 HospitalTab(
                     injuryId = injury.id,
                     onAddVisit = onNavigateToAddVisit,
@@ -1041,11 +1077,15 @@ private fun DetailLoadingPreview() {
     HealLogTheme {
         InjuryDetailContent(
             uiState = InjuryDetailUiState(isLoading = true),
+            painChartData = emptyList(),
+            selectedChartPeriod = com.heallog.model.ChartPeriod.WEEK,
+            recoveryStats = null,
             snackbarHostState = remember { SnackbarHostState() },
             onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
             onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
             onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {},
-            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {}
+            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {},
+            onChartPeriodChanged = {}
         )
     }
 }
@@ -1076,11 +1116,15 @@ private fun DetailSuccessPreview() {
                 newLogForm = NewLogFormState(isExpanded = true, painLevel = 4),
                 isLoading = false
             ),
+            painChartData = emptyList(),
+            selectedChartPeriod = com.heallog.model.ChartPeriod.WEEK,
+            recoveryStats = null,
             snackbarHostState = remember { SnackbarHostState() },
             onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
             onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
             onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {},
-            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {}
+            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {},
+            onChartPeriodChanged = {}
         )
     }
 }
@@ -1098,11 +1142,15 @@ private fun DetailCollapsedPreview() {
     HealLogTheme {
         InjuryDetailContent(
             uiState = InjuryDetailUiState(injury = injury, isLoading = false),
+            painChartData = emptyList(),
+            selectedChartPeriod = com.heallog.model.ChartPeriod.WEEK,
+            recoveryStats = null,
             snackbarHostState = remember { SnackbarHostState() },
             onNavigateBack = {}, onToggleLogForm = {}, onUpdateLogPainLevel = {},
             onUpdateLogNote = {}, onAddLogPhoto = {}, onRemoveLogPhoto = {},
             onAddPainLog = {}, onUpdateStatus = {}, onDeleteInjury = {},
-            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {}
+            onEditInjury = {}, onUpdatePainLog = { _, _, _, _ -> }, onDeletePainLog = {},
+            onChartPeriodChanged = {}
         )
     }
 }

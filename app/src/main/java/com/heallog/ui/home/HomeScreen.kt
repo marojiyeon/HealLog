@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,8 +64,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
+import com.heallog.model.DashboardStats
 import com.heallog.model.InjuryStatus
+import com.heallog.model.RecoveryStats
 import com.heallog.ui.components.VoiceCommandFab
+import com.heallog.ui.detail.chart.RecoveryProgressRing
 import com.heallog.ui.theme.HealLogSpacing
 import com.heallog.ui.theme.HealLogTheme
 import com.heallog.util.EmojiMapper
@@ -81,9 +85,11 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val voiceFabEnabled by viewModel.voiceFabEnabled.collectAsStateWithLifecycle()
+    val dashboardStats by viewModel.dashboardStats.collectAsStateWithLifecycle()
     HomeContent(
         uiState = uiState,
         voiceFabEnabled = voiceFabEnabled,
+        dashboardStats = dashboardStats,
         onNavigateToBodyMap = onNavigateToBodyMap,
         onNavigateToDetail = onNavigateToDetail,
         onNavigateToNotificationSettings = onNavigateToNotificationSettings
@@ -95,6 +101,7 @@ fun HomeScreen(
 private fun HomeContent(
     uiState: HomeUiState,
     voiceFabEnabled: Boolean,
+    dashboardStats: DashboardStats?,
     onNavigateToBodyMap: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
     onNavigateToNotificationSettings: () -> Unit = {}
@@ -231,6 +238,7 @@ private fun HomeContent(
                     InjuryListContent(
                         activeItems = state.activeItems,
                         healedItems = state.healedItems,
+                        dashboardStats = dashboardStats,
                         onNavigateToDetail = onNavigateToDetail,
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -312,6 +320,7 @@ private fun ErrorContent(message: String, modifier: Modifier = Modifier) {
 private fun InjuryListContent(
     activeItems: List<InjuryWithLatestLog>,
     healedItems: List<InjuryWithLatestLog>,
+    dashboardStats: DashboardStats?,
     onNavigateToDetail: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -322,6 +331,15 @@ private fun InjuryListContent(
         contentPadding = PaddingValues(HealLogSpacing.ContentPadding),
         verticalArrangement = Arrangement.spacedBy(HealLogSpacing.ItemSpacing)
     ) {
+        dashboardStats?.let { stats ->
+            item(key = "dashboard_stats") {
+                DashboardStatsSection(
+                    stats = stats,
+                    onNavigateToDetail = onNavigateToDetail
+                )
+            }
+        }
+
         if (activeItems.isEmpty() && healedItems.isNotEmpty()) {
             item {
                 Text(
@@ -370,6 +388,93 @@ private fun InjuryListContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DashboardStatsSection(
+    stats: DashboardStats,
+    onNavigateToDetail: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 4.dp)
+        ) {
+            item {
+                StatSummaryCard(label = "총 부상", value = "${stats.totalInjuries}건")
+            }
+            item {
+                StatSummaryCard(label = "활성 부상", value = "${stats.activeInjuries}건")
+            }
+            stats.avgRecoveryDays?.let { days ->
+                item {
+                    StatSummaryCard(label = "평균 회복", value = "${days.toInt()}일")
+                }
+            }
+            stats.mostInjuredPart?.let { part ->
+                item {
+                    StatSummaryCard(label = "자주 다치는 부위", value = part)
+                }
+            }
+        }
+
+        if (stats.activeRecoveryList.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "회복 현황",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+            stats.activeRecoveryList.forEach { recoveryStats ->
+                RecoveryMiniCard(
+                    stats = recoveryStats,
+                    onClick = { onNavigateToDetail(recoveryStats.injuryId) }
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatSummaryCard(label: String, value: String) {
+    ElevatedCard {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecoveryMiniCard(
+    stats: RecoveryStats,
+    onClick: () -> Unit
+) {
+    ElevatedCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        RecoveryProgressRing(
+            stats = stats,
+            ringSize = 56.dp,
+            strokeWidth = 6.dp
+        )
     }
 }
 
@@ -509,6 +614,7 @@ private fun HomeLoadingPreview() {
         HomeContent(
             uiState = HomeUiState.Loading,
             voiceFabEnabled = false,
+            dashboardStats = null,
             onNavigateToBodyMap = {},
             onNavigateToDetail = {}
         )
@@ -522,6 +628,7 @@ private fun HomeEmptyPreview() {
         HomeContent(
             uiState = HomeUiState.Empty,
             voiceFabEnabled = false,
+            dashboardStats = null,
             onNavigateToBodyMap = {},
             onNavigateToDetail = {}
         )
@@ -552,6 +659,7 @@ private fun HomeSuccessPreview() {
                 healedItems = emptyList()
             ),
             voiceFabEnabled = false,
+            dashboardStats = null,
             onNavigateToBodyMap = {},
             onNavigateToDetail = {}
         )

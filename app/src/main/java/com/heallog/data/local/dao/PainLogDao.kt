@@ -17,6 +17,12 @@ interface PainLogDao {
     @Query("SELECT * FROM pain_logs WHERE injuryId = :injuryId ORDER BY loggedAt DESC LIMIT 1")
     fun getLatestLog(injuryId: Long): Flow<PainLog?>
 
+    @Query("SELECT * FROM pain_logs WHERE injuryId = :injuryId ORDER BY loggedAt ASC")
+    fun getPainLogsAscForInjury(injuryId: Long): Flow<List<PainLog>>
+
+    @Query("SELECT * FROM pain_logs ORDER BY loggedAt ASC")
+    fun getAllPainLogs(): Flow<List<PainLog>>
+
     @Insert
     suspend fun insertLog(log: PainLog): Long
 

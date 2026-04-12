@@ -112,6 +112,9 @@ dependencies {
     // Material Icons Extended (for Mic icon)
     implementation(libs.androidx.compose.material.icons.extended)
 
+    // Vico (Chart library)
+    implementation(libs.vico.compose.m3)
+
     // Tests
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

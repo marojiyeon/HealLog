@@ -7,14 +7,21 @@ import androidx.lifecycle.viewModelScope
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.data.repository.InjuryRepository
+import com.heallog.model.ChartPeriod
 import com.heallog.model.InjuryStatus
+import com.heallog.model.PainChartPoint
+import com.heallog.model.RecoveryStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -47,6 +54,16 @@ class InjuryDetailViewModel @Inject constructor(
     private val injuryId: Long = checkNotNull(savedStateHandle["injuryId"])
 
     private val _formState = MutableStateFlow(NewLogFormState())
+
+    private val _selectedChartPeriod = MutableStateFlow(ChartPeriod.WEEK)
+    val selectedChartPeriod: StateFlow<ChartPeriod> = _selectedChartPeriod.asStateFlow()
+
+    val painChartData: StateFlow<List<PainChartPoint>> = _selectedChartPeriod
+        .flatMapLatest { period -> repository.getPainChartData(injuryId, period) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val recoveryStats: StateFlow<RecoveryStats?> = repository.getRecoveryStats(injuryId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val uiState: StateFlow<InjuryDetailUiState> = combine(
         repository.getInjuryById(injuryId),
@@ -161,5 +178,9 @@ class InjuryDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _navigateToEdit.send(injury.bodyPart)
         }
+    }
+
+    fun onChartPeriodChanged(period: ChartPeriod) {
+        _selectedChartPeriod.value = period
     }
 }
