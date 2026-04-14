@@ -119,7 +119,11 @@ class InjuryDetailViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
 
-        coVerify(exactly = 1) { repository.insertLog(any<PainLog>()) }
+        coVerify(exactly = 1) {
+            repository.insertLog(match { log ->
+                log.injuryId == 1L && log.painLevel == 6 && log.note == "기록 추가"
+            })
+        }
     }
 
     @Test

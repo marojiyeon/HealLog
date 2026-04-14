@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -133,11 +134,9 @@ class HomeViewModelTest {
 
         viewModel.uiState.test {
             var found = false
-            for (i in 0 until 5) {
-                when (val item = awaitItem()) {
-                    is HomeUiState.Error -> { found = true; break }
-                    else -> {}
-                }
+            for (i in 0 until 3) {
+                val item = awaitItem()
+                if (item is HomeUiState.Error) { found = true; break }
             }
             assertTrue("Expected Error state but never received it", found)
             cancelAndIgnoreRemainingEvents()
@@ -150,16 +149,13 @@ class HomeViewModelTest {
         viewModel = HomeViewModel(repository, voicePreferences)
 
         viewModel.uiState.test {
-            var found = false
+            var errorState: HomeUiState.Error? = null
             for (i in 0 until 3) {
                 val item = awaitItem()
-                if (item is HomeUiState.Error) {
-                    assertTrue(item.message.contains("DB 오류"))
-                    found = true
-                    break
-                }
+                if (item is HomeUiState.Error) { errorState = item; break }
             }
-            assertTrue("Expected Error state", found)
+            assertNotNull("Expected Error state", errorState)
+            assertTrue(errorState!!.message.contains("DB 오류"))
             cancelAndIgnoreRemainingEvents()
         }
     }
