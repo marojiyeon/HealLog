@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +55,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.heallog.R
@@ -64,11 +64,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
+import com.heallog.model.BodyParts
 import com.heallog.model.DashboardStats
 import com.heallog.model.InjuryStatus
 import com.heallog.model.RecoveryStats
 import com.heallog.ui.components.VoiceCommandFab
-import com.heallog.ui.detail.chart.RecoveryProgressRing
 import com.heallog.ui.theme.HealLogSpacing
 import com.heallog.ui.theme.HealLogTheme
 import com.heallog.util.EmojiMapper
@@ -325,23 +325,21 @@ private fun InjuryListContent(
     modifier: Modifier = Modifier
 ) {
     var healedExpanded by remember { mutableStateOf(false) }
+    val recoveryStatsMap = dashboardStats?.activeRecoveryList?.associateBy { it.injuryId } ?: emptyMap()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(HealLogSpacing.ContentPadding),
+        contentPadding = PaddingValues(
+            start = HealLogSpacing.ContentPadding,
+            end = HealLogSpacing.ContentPadding,
+            top = HealLogSpacing.ContentPadding,
+            bottom = 140.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(HealLogSpacing.ItemSpacing)
     ) {
         dashboardStats?.let { stats ->
             item(key = "dashboard_stats") {
                 DashboardStatsSection(stats = stats)
-            }
-            if (stats.activeRecoveryList.isNotEmpty()) {
-                items(stats.activeRecoveryList, key = { "recovery_${it.injuryId}" }) { recoveryStats ->
-                    RecoveryMiniCard(
-                        stats = recoveryStats,
-                        onClick = { onNavigateToDetail(recoveryStats.injuryId) }
-                    )
-                }
             }
         }
 
@@ -351,7 +349,7 @@ private fun InjuryListContent(
                     text = stringResource(R.string.no_active_injuries),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
         }
@@ -359,6 +357,7 @@ private fun InjuryListContent(
         items(activeItems, key = { it.injury.id }) { item ->
             InjuryCard(
                 item = item,
+                recoveryStats = recoveryStatsMap[item.injury.id],
                 onClick = { onNavigateToDetail(item.injury.id) }
             )
         }
@@ -368,7 +367,7 @@ private fun InjuryListContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = if (activeItems.isNotEmpty()) 8.dp else 0.dp),
+                        .padding(top = if (activeItems.isNotEmpty()) 4.dp else 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -388,6 +387,7 @@ private fun InjuryListContent(
                 items(healedItems, key = { "healed_${it.injury.id}" }) { item ->
                     InjuryCard(
                         item = item,
+                        recoveryStats = null,
                         onClick = { onNavigateToDetail(item.injury.id) }
                     )
                 }
@@ -401,83 +401,59 @@ private fun DashboardStatsSection(
     stats: DashboardStats,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 4.dp)
-        ) {
-            item {
-                StatSummaryCard(label = "총 부상", value = "${stats.totalInjuries}건")
-            }
-            item {
-                StatSummaryCard(label = "활성 부상", value = "${stats.activeInjuries}건")
-            }
-            stats.avgRecoveryDays?.let { days ->
-                item {
-                    StatSummaryCard(label = "평균 회복", value = "${days.toInt()}일")
-                }
-            }
-            stats.mostInjuredPart?.let { part ->
-                item {
-                    StatSummaryCard(label = "자주 다치는 부위", value = part)
-                }
-            }
-        }
-
-        if (stats.activeRecoveryList.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "회복 현황",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-        }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        StatSummaryCard(
+            label = "활성 / 전체",
+            value = "${stats.activeInjuries} / ${stats.totalInjuries}건",
+            modifier = Modifier.weight(1f)
+        )
+        StatSummaryCard(
+            label = "평균 회복",
+            value = stats.avgRecoveryDays?.let { "${it.toInt()}일" } ?: "-",
+            modifier = Modifier.weight(1f)
+        )
+        StatSummaryCard(
+            label = "주요 부위",
+            value = stats.mostInjuredPart?.let { BodyParts.findById(it)?.nameKo } ?: "-",
+            modifier = Modifier.weight(2f)
+        )
     }
 }
 
 @Composable
-private fun StatSummaryCard(label: String, value: String) {
-    ElevatedCard {
+private fun StatSummaryCard(label: String, value: String, modifier: Modifier = Modifier) {
+    ElevatedCard(modifier = modifier) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
-@Composable
-private fun RecoveryMiniCard(
-    stats: RecoveryStats,
-    onClick: () -> Unit
-) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        RecoveryProgressRing(
-            stats = stats,
-            ringSize = 56.dp,
-            strokeWidth = 6.dp
-        )
-    }
-}
 
 @Composable
 private fun InjuryCard(
     item: InjuryWithLatestLog,
+    recoveryStats: RecoveryStats?,
     onClick: () -> Unit
 ) {
     val daysSince = ChronoUnit.DAYS.between(item.injury.occurredAt, LocalDate.now())
@@ -488,17 +464,17 @@ private fun InjuryCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Text(EmojiMapper.getEmojiForBodyPart(item.injury.bodyPart), fontSize = 22.sp)
+                Text(EmojiMapper.getEmojiForBodyPart(item.injury.bodyPart), fontSize = 20.sp)
             }
 
             Spacer(Modifier.width(12.dp))
@@ -522,11 +498,11 @@ private fun InjuryCard(
                     )
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 PainLevelBar(painLevel = currentPain)
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -534,11 +510,19 @@ private fun InjuryCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     StatusChip(status = item.injury.status)
-                    Text(
-                        text = "통증 $currentPain/10",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (recoveryStats != null) {
+                        Text(
+                            text = "회복률 ${recoveryStats.recoveryRate.toInt()}%  통증 $currentPain/10",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = "통증 $currentPain/10",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
