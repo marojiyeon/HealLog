@@ -50,6 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     lint {
         disable += "RemoveWorkManagerInitializer"
@@ -114,6 +115,9 @@ dependencies {
 
     // Vico (Chart library)
     implementation(libs.vico.compose.m3)
+
+    // Health Connect
+    implementation(libs.androidx.health.connect.client)
 
     // Tests
     testImplementation(libs.junit)

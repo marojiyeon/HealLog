@@ -107,6 +107,7 @@ fun ProfileScreen(
             item { SportsInfoCard(profile = userProfile) }
             item { MedicalInfoCard(profile = userProfile) }
             item { InjuryStatsCard(stats = injuryStats) }
+            item { HealthConnectSection() }
             item {
                 Button(
                     onClick = onNavigateToEdit,

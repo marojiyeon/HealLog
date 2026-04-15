@@ -28,4 +28,7 @@ interface HospitalVisitDao {
 
     @Query("SELECT * FROM hospital_visits WHERE id = :id")
     fun getVisitById(id: Long): Flow<HospitalVisit?>
+
+    @Query("SELECT * FROM hospital_visits ORDER BY visitDate DESC")
+    fun getAllVisits(): Flow<List<HospitalVisit>>
 }

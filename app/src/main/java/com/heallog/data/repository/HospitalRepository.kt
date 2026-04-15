@@ -4,6 +4,7 @@ import com.heallog.data.local.dao.HospitalVisitDao
 import com.heallog.data.local.dao.MedicationDao
 import com.heallog.data.local.entity.HospitalVisit
 import com.heallog.data.local.entity.Medication
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,4 +39,10 @@ class HospitalRepository @Inject constructor(
     suspend fun updateMedication(med: Medication) = medicationDao.updateMedication(med)
 
     suspend fun deleteMedication(med: Medication) = medicationDao.deleteMedication(med)
+
+    // --- Export snapshots ---
+
+    suspend fun getAllVisitsSnapshot(): List<HospitalVisit> = visitDao.getAllVisits().first()
+
+    suspend fun getAllMedicationsSnapshot(): List<Medication> = medicationDao.getAllMedications().first()
 }

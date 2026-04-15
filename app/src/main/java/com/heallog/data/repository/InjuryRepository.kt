@@ -13,6 +13,7 @@ import com.heallog.model.RecoveryTrend
 import com.heallog.widget.WidgetUpdateManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -82,6 +83,12 @@ class InjuryRepository @Inject constructor(
         painLogDao.deleteLog(log)
         widgetUpdateManager.updateAllWidgets()
     }
+
+    // --- Export snapshots ---
+
+    suspend fun getAllInjuriesSnapshot(): List<Injury> = injuryDao.getAllInjuries().first()
+
+    suspend fun getAllPainLogsSnapshot(): List<PainLog> = painLogDao.getAllPainLogs().first()
 
     // --- Chart & Recovery ---
 

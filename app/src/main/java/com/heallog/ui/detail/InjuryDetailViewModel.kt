@@ -7,9 +7,11 @@ import androidx.lifecycle.viewModelScope
 import com.heallog.data.local.entity.Injury
 import com.heallog.data.local.entity.PainLog
 import com.heallog.data.repository.InjuryRepository
+import com.heallog.data.repository.RehabGuideRepository
 import com.heallog.model.ChartPeriod
 import com.heallog.model.InjuryStatus
 import com.heallog.model.PainChartPoint
+import com.heallog.model.RehabExercise
 import com.heallog.model.RecoveryStats
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -48,7 +50,8 @@ data class InjuryDetailUiState(
 @HiltViewModel
 class InjuryDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: InjuryRepository
+    private val repository: InjuryRepository,
+    private val rehabGuideRepository: RehabGuideRepository
 ) : ViewModel() {
 
     private val injuryId: Long = checkNotNull(savedStateHandle["injuryId"])
@@ -64,6 +67,11 @@ class InjuryDetailViewModel @Inject constructor(
 
     val recoveryStats: StateFlow<RecoveryStats?> = repository.getRecoveryStats(injuryId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val rehabExercises: StateFlow<List<RehabExercise>> = repository.getInjuryById(injuryId)
+        .filterNotNull()
+        .map { injury -> rehabGuideRepository.getExercisesForBodyPart(injury.bodyPart) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val uiState: StateFlow<InjuryDetailUiState> = combine(
         repository.getInjuryById(injuryId),

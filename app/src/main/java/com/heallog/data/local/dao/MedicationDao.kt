@@ -17,6 +17,9 @@ interface MedicationDao {
     @Query("SELECT * FROM medications WHERE isActive = 1 ORDER BY startDate DESC")
     fun getActiveMedications(): Flow<List<Medication>>
 
+    @Query("SELECT * FROM medications ORDER BY startDate DESC")
+    fun getAllMedications(): Flow<List<Medication>>
+
     @Insert
     suspend fun insertMedication(med: Medication): Long
 
